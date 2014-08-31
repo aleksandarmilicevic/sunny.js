@@ -120,6 +120,7 @@ Sunny.simportAll(this, Sunny.Fun)
 
 Sunny.Conf = do ->
   registerGlobalNames: true
+  serverRecordPersistence: "reuse" # valid values: 'reuse', 'create', 'replace'
 
 # ====================================================================================
 #   standard prototype extensions
@@ -576,7 +577,7 @@ Sunny.Types = do ->
       i1 = this.ord(e1); return undefined if i1 == -1
       i2 = this.ord(e2); return undefined if i2 == -1
       return fn(i1, i2)
-          
+
   class Type
     constructor: (@mult, @klasses, @refKind) ->
 
@@ -746,7 +747,7 @@ Sunny.MetaModel = do ->
             Sunny.Meta.policies.push(p)
           else
             throw("unrecognized operation: #{op}")
-        
+
   # -----------------------------------------------------------------
   #   class RecordMeta
   # -----------------------------------------------------------------
@@ -779,7 +780,7 @@ Sunny.MetaModel = do ->
       while sig
         Sunny.Utils.safeReg sig, fld.name, fld
         sig = sig.__meta__?.parentSig
-    
+
     _deleteObjDeps:   (objId) -> delete @__objDeps__[objId]
 
     _deleteConnComps: (connId) ->
@@ -946,6 +947,7 @@ Sunny.Model = do ->
 
     # ------------------------------------------------------------------------
     toString: () -> "#{this.meta().name}(#{this.id()})"
+    inspect:  () -> "#{this.meta().name}.new({_id: '#{this.id()}'})"
 
     _raw: (projection) ->
       projection = {} if projection == undefined
@@ -968,8 +970,8 @@ Sunny.Model = do ->
       fldComp = new Sunny.Deps.FldComp(connId, this, fld)
       fldComp.exe(fldVal)
 
-    _toMeteorRef: () -> return _id: this.id(), _sunny_type: this.type()
-    _inspect:     () -> return "Sunny.#{this.meta().name}.new({_id: '#{this.id()}'})"
+    _toMeteorRef: () -> _id: this.id(), _sunny_type: this.type()
+    _inspect:     () -> "Sunny.Meta.records['#{this.meta().name}'].new({_id: '#{this.id()}'})"
 
     __static__: {
         create:     (objProps)  -> Sunny.CRUD.create(this, objProps)
@@ -1463,7 +1465,7 @@ Sunny.Dsl = do ->
       when target instanceof Field      then target.policy(body)
       when Sunny.Types.isSigKls(target) then target.policy(body)
       else throw("Unknown policy target: #{target}")
-    
+
   SunnyUser: createRecordKls class SunnyUser extends Record
     _mUser: Obj
     email: Text
@@ -1924,13 +1926,22 @@ if Meteor.isServer
   # delete all Client and Server records and create a single
   # Server record for the currently running server
   Meteor.startup () ->
-    slog "destroying all Client and Server records"
+    slog "destroying all Client records"
     for clnt in Sunny.Meta.clientKls().all()
       _cleanupClient(clnt)
       clnt.destroy()
-    Sunny.Meta.serverKls().destroyAll()
-    slog "creating a Server record"
-    Sunny._myServer = Sunny.Meta.serverKls().create()
+    srvKls = Sunny.Meta.serverKls()
+    Sunny._myServer = switch v = Sunny.Conf.serverRecordPersistence
+                        when "reuse"
+                          srvs = srvKls.all()
+                          if srvs.length > 0 then srvs[0] else srvKls.create()
+                        when "create"
+                          srvKls.create()
+                        when "replace"
+                          srvKls.destroyAll()
+                          srvKls.create()
+                        else
+                          sfatal("illegal value for Sunny.Conf.serverRecordPersistence: #{v}")
 
   # create a Client record whenever a client connects and add it
   # to Server.onlineClients.
