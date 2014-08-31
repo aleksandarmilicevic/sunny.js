@@ -38,7 +38,6 @@ Sunny.myClient = () ->
   else
     connId = Meteor.connection._lastSessionId
     myClient = Sunny.Meta.clientKls().findOne("_mConn.id": connId);
-    Sunny._myClient = myClient
     return myClient
 
 Sunny.currClient = Sunny.myClient
@@ -50,10 +49,6 @@ Sunny.methods = (hash) ->
       wfn = fn
       if (Meteor.isServer)
         wfn = Sunny.Queue.wrapAsInvocation "M-#{name}", fn
-        # wfn = () ->
-        #   args = arguments
-        #   onClientBehalf this.connection.id, () -> fn.apply(this, args)
-
       mthds[name] = wfn
   Meteor.methods mthds
 
@@ -572,6 +567,9 @@ Sunny.Types = do ->
     lt:  (e1, e2) -> this.w_ords e1, e2, (i1, i2) -> i1 < i2
     gte: (e1, e2) -> this.w_ords e1, e2, (i1, i2) -> i1 >= i2
     gt:  (e1, e2) -> this.w_ords e1, e2, (i1, i2) -> i1 > i2
+
+    hasValue: (e) -> this.ord(e) != -1
+    valueOf:  (e) -> i = this.ord(e); if i != -1 then @values[i] else undefined
 
     w_ords: (e1, e2, fn) ->
       i1 = this.ord(e1); return undefined if i1 == -1
@@ -1390,19 +1388,22 @@ Sunny.Dsl = do ->
     for toFrom in ["from", "to"]
       if sig.prototype.hasOwnProperty(toFrom)
         flds = extractFieldEntries(sig.prototype[toFrom])
-        throw("must specify exactly one '#{toFrom}' field") unless flds.length == 1
+        sfatal("must specify exactly one '#{toFrom}' field") unless flds.length == 1
         sig.__meta__.addField(flds[0])
         sig.__meta__["_#{toFrom}Field"] = flds[0].name
         defineFldProperty(sig, flds[0].name)
         defineFldProperty(sig, flds[0].name, toFrom)
+        delete sig.prototype[toFrom]
 
     paramNames = []
-    for paramFld in extractFieldEntries(sig.prototype.params)
+    paramFlds = extractFieldEntries(sig.prototype.params)
+    delete sig.prototype["params"]
+    paramFlds = paramFlds.concat(extractFieldEntries(sig.prototype))
+    for paramFld in paramFlds
       sig.__meta__.fields.push paramFld
       defineFldProperty(sig, paramFld.name)
       paramNames.push paramFld.name
     sig.__meta__.params = paramNames
-    delete sig.prototype["params"]
 
     register(sig)
 
@@ -1560,7 +1561,10 @@ Sunny.ACL = do ->
               sdebug "  -> denied"
               return outcome # denied; return
             else if outcome.isAllowed()
-              msg = "  -> allowed"; msg = msg + " (restricted)" if outcome.hasValue()
+              msg = "  -> allowed";             
+              if outcome.hasValue()
+                msg = msg + " (restricted)"
+                msg += ": #{outcome.value.length}" if outcome.value instanceof Array              
               sdebug msg
               currVal = outcome.value if outcome.hasValue()
               currOutcome = outcome if outcome.hasValue() or not currOutcome
@@ -1809,13 +1813,6 @@ if Meteor.isClient
 
 Meteor.methods(mthds)
 
-# ====================================================================================
-#   Add field keys to sigs
-# ====================================================================================
-Meteor.startup () ->
-  for sigName, sig of Sunny.Meta.recordsAndMachinesAndBuiltin()
-    for fld in sig.__meta__.allFields()
-      Sunny.Utils.safeReg sig, fld.name, fld
 
 # ====================================================================================
 #   Manage publish/subscribe of collections
@@ -1972,6 +1969,5 @@ if Meteor.isServer
   # Reset Client.user whenever login fails
   Accounts.onLoginFailure (x) ->
     console.log "on login failure"
-    clnt = Sunny.Meta.clientKls().findOne({"_mConn.id": x.connection.id})
-    if clnt
-      clnt.user = null
+    clnt = getSunnyClient(x.connection.id) and clnt.user = null
+
