@@ -779,7 +779,7 @@ Sunny.MetaModel = do ->
         sig = sig.__meta__?.parentSig
 
     _deleteObjDeps:          (objId)  -> delete @__objDeps__[objId]
-    
+
     _deletePublishers:       (connId) -> delete @__pubs__[connId]
     _deletePublishedObjects: (connId) -> delete @__pubObjs__[connId]
     _deleteComputations:     (connId) ->
@@ -1058,8 +1058,8 @@ Sunny.Model = do ->
   ec class Event extends Sig
     init: (props) ->
       # TODO: don't hardcode
-      this.setFrom(Sunny.myClient())
-      this.setTo(Sunny.myServer())
+      # this.setFrom(Sunny.myClient())
+      # this.setTo(Sunny.myServer())
       super
       return this
 
@@ -1071,9 +1071,14 @@ Sunny.Model = do ->
       ans[pname] = this[pname] for pname in this.meta().allParams()
       return ans
 
+    paramValuesJSON: () ->
+      ans = {}
+      ans[pname] = EJSON.toJSONValue(this[pname]) for pname in this.meta().allParams()
+      ans
+
     # ---------------- EJSON methods ---------------
     typeName:    () -> this.meta().name
-    toJSONValue: () -> event: this.typeName(), params: this.paramValues()
+    toJSONValue: () -> event: this.typeName() , params: this.paramValuesJSON()
     clone:       () -> this.meta().sigCls.new(this.paramValues())
     equals: (other) ->
       return false unless other
@@ -1083,6 +1088,8 @@ Sunny.Model = do ->
     # -----------------------------------------------
     _trigger: (props) ->
       this._setProps(props) if props
+      this.setFrom(Sunny.myClient())
+      this.setTo(Sunny.myServer())
       if this.requires
         err = this.requires()
         if (err)
@@ -1095,15 +1102,15 @@ Sunny.Model = do ->
       return this.ensures()
 
     trigger: (props) ->
-      this._setProps(props)
-      this._trigger()
-      # # TODO: FIXME
-      # if Meteor.isServer
-      #   self = this
-      #   Sunny.Queue.runAsInvocation "event", () -> self._trigger(props)
-      # else
-      #   this._setProps(props)
-      #   Meteor.apply("event", [this], Sunny.Queue._rpcOpts)
+      # this._setProps(props)
+      # this._trigger()
+      # TODO: FIXME
+      if Meteor.isServer
+        self = this
+        Sunny.Queue.runAsInvocation "event", () -> self._trigger(props)
+      else
+        this._setProps(props)
+        Meteor.apply("event", [this], Sunny.Queue._rpcOpts)
 
   # -----------------------------------------------------------------
   #   class PolicyOutcome
@@ -1388,7 +1395,10 @@ Sunny.Dsl = do ->
     register(sig)
 
     # add EJSON type
-    EJSON.addType sig.__meta__.name, (json) -> sig.new(json)
+    EJSON.addType sig.__meta__.name, (json) ->
+      deserializedParams = {}
+      deserializedParams[pn] = EJSON.fromJSONValue(pv) for pn, pv of json
+      sig.new(deserializedParams)
 
     return sig
 
@@ -1425,7 +1435,10 @@ Sunny.Dsl = do ->
     register(sig)
 
     # add EJSON type
-    EJSON.addType sig.__meta__.name, (json) -> sig._findAltSig(json.event).new(json.params)
+    EJSON.addType sig.__meta__.name, (json) ->
+      deserializedParams = {}
+      deserializedParams[pn] = EJSON.fromJSONValue(pv) for pn, pv of json.params
+      sig._findAltSig(json.event).new(deserializedParams)
 
     return sig
 
@@ -1759,7 +1772,7 @@ Sunny.Queue = do ->
       inv = new Invocation(op, opFn, args)
       _queue.push(inv)
       try
-        onClientBehalf connId, () -> opFn.apply(this, args)
+        onClientBehalf connId, () -> opFn.apply(self, args)
       catch err
         _rootInvocation().error = err
       finally
@@ -1846,13 +1859,13 @@ wrapPublisher = (pub, kls) ->
 
   pub.sunny_removed = (name, id) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> #{name}(#{id}) removed"        
+      sdebug ">>>> #{name}(#{id}) removed"
       delete pubObjs[id]
       pub.removed(name, id)
 
   pub.sunny_changed = (name, id, flds) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> #{name}(#{id}) changed"        
+      sdebug ">>>> #{name}(#{id}) changed"
       pub.changed(name, id, flds)
 
   pub
