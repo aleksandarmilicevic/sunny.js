@@ -226,8 +226,7 @@ toMeteorRef = (obj) ->
 _cleanupClient = (client, connId) ->
   connId ?= client?._mConn?.id
   for sig in Sunny.Meta.recordsAndMachines
-    sig.__meta__._deleteConnComps(connId)
-    sig.__meta__._deleteConnPubs(connId)
+    sig.__meta__._cleanupConn(connId)
 
 # ====================================================================================
 #   Sunny.Utils
@@ -443,7 +442,6 @@ Sunny.Deps = do ->
         ans = check.returnResult(val, @fld.type?.defaultValue())
 
         fflds = {}; fflds[fldName] = toMeteorRef(ans)
-        sdebug "#{@connId}: #{obj}.#{fldName} changed"
         pub.sunny_changed meta.name, obj.id(), fflds
 
     _readField: () ->
@@ -474,8 +472,8 @@ Sunny.Deps = do ->
         if @op == "set"
           currentObjsOnClient = meta._getPubObjs(@connId)
           for rId in Object.keys(currentObjsOnClient)
-            swarn "removing prev obj: #{r.id()} for conn #{@connId}"
-            pub.sunny_removed @sig.name, r.id()
+            swarn "removing prev obj: #{@sig.name}(#{rId}) for conn #{@connId}"
+            pub.sunny_removed @sig.name, rId
 
         for r in result
           pub.sunny_added @sig.name, r.id(), {}
@@ -780,19 +778,22 @@ Sunny.MetaModel = do ->
         Sunny.Utils.safeReg sig, fld.name, fld
         sig = sig.__meta__?.parentSig
 
-    _deleteObjDeps:   (objId) -> delete @__objDeps__[objId]
-
-    _deleteConnComps: (connId) ->
+    _deleteObjDeps:          (objId)  -> delete @__objDeps__[objId]
+    
+    _deletePublishers:       (connId) -> delete @__pubs__[connId]
+    _deletePublishedObjects: (connId) -> delete @__pubObjs__[connId]
+    _deleteComputations:     (connId) ->
       for key1, fcomps of @__comps__[connId]
         for key2, comp of fcomps
           comp.stop()
       delete @__comps__[connId]
 
-    _deleteConnPubs: (connId) ->
-      delete @__pubs__[connId]
+    _cleanupConn: (connId) ->
+      this._deletePublishedObjects(connId)
+      this._deleteComputations(connId)
+      this._deletePublishers(connId)
 
-    _getPubObjs: (connId) ->
-      @__pubObjs__[connId] ?= {}
+    _getPubObjs: (connId) -> @__pubObjs__[connId] ?= {}
 
     _getComp: (connId, objKey, fldKey, mkCompFn) ->
       connComps = @__comps__[connId] ?= {}
@@ -1101,6 +1102,7 @@ Sunny.Model = do ->
       #   self = this
       #   Sunny.Queue.runAsInvocation "event", () -> self._trigger(props)
       # else
+      #   this._setProps(props)
       #   Meteor.apply("event", [this], Sunny.Queue._rpcOpts)
 
   # -----------------------------------------------------------------
@@ -1838,16 +1840,19 @@ wrapPublisher = (pub, kls) ->
   pubObjs = kls.__meta__._getPubObjs(connId)
 
   pub.sunny_added = (name, id, flds) ->
+    sdebug ">>>> #{name}(#{id}) added"
     pubObjs[id] = id
     pub.added(name, id, flds)
 
   pub.sunny_removed = (name, id) ->
     if pubObjs.hasOwnProperty(id)
+      sdebug ">>>> #{name}(#{id}) removed"        
       delete pubObjs[id]
       pub.removed(name, id)
 
   pub.sunny_changed = (name, id, flds) ->
     if pubObjs.hasOwnProperty(id)
+      sdebug ">>>> #{name}(#{id}) changed"        
       pub.changed(name, id, flds)
 
   pub
@@ -1906,24 +1911,24 @@ Meteor.startup () ->
           connId = self.connection.id
           Sunny._currConnId.set(connId)
           meta.__pubs__[connId] = self
-          sdebug("publishing #{klsName}")
+          sdebug "SUB '#{klsName}' from #{connId}"
 
-          if Sunny.ACL.applicablePolicies(new OpFind(kls)).length > 0
-            kls._serRecordsForClient(connId, "set")
-          else
-            # call `added' for the object currently found in the collection
-            # slightly faster than the above
-            h = meta.__repr__.find({}).observeChanges
-              added: (id, flds) ->
-                self.sunny_added klsName, id, {}
-                filterFields(connId, id, flds)
-            h.stop()
+          kls._serRecordsForClient(connId, "set")
+          # if Sunny.ACL.applicablePolicies(new OpFind(kls)).length > 0
+          #   kls._serRecordsForClient(connId, "set")
+          # else
+          #   # call `added' for the object currently found in the collection
+          #   # slightly faster than the above
+          #   h = meta.__repr__.find({}).observeChanges
+          #     added: (id, flds) ->
+          #       self.sunny_added klsName, id, {}
+          #       filterFields(connId, id, flds)
+          #   h.stop()
 
           self.ready()
           self.onStop ()->
-            # handle.stop()
-            delete meta._deleteConnComps(connId)
-            delete meta._deleteConnPubs(connId)
+            sdebug "UNSUB '#{klsName}' from #{connId}"
+            meta._cleanupConn(connId)
 
   if Meteor.isClient
     for klsName, kls of Sunny.Meta.recordsAndMachinesAndBuiltin()
@@ -1946,7 +1951,7 @@ if Meteor.isClient
     clnt = Sunny.myClient()
     if clnt
       clnt.user = null
-      Sunny.myServer().onlineClients.remove(clnt)
+      # Sunny.myServer().onlineClients.remove(clnt)
 
   # default access denied listener
   Sunny.ACL.onAccessDenied (hash) ->
