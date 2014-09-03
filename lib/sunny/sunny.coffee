@@ -287,7 +287,7 @@ Sunny.Utils = do ->
     id
 
   safeReg: (obj, key, val) ->
-    obj[key] = val unless Object.hasOwnProperty(obj, key)
+    obj[key] = val unless obj.hasOwnProperty(key)
 
 assert = Sunny.Utils.assert
 
@@ -435,7 +435,7 @@ Sunny.Deps = do ->
         fldName = @fld.name
         obj = @record
 
-        fldVal = this._readField() if fldVal == undefined
+        fldVal = this._readField() #if fldVal == undefined
         val = wrap(obj, @fld, fldVal)
         check = Sunny.Deps.withComp this, () ->
           onClientBehalf clnt, () ->
@@ -444,7 +444,7 @@ Sunny.Deps = do ->
 
         fflds = {}; fflds[fldName] = toMeteorRef(ans)
         sdebug "#{@connId}: #{obj}.#{fldName} changed"
-        pub.changed meta.name, obj.id(), fflds
+        pub.sunny_changed meta.name, obj.id(), fflds
 
     _readField: () ->
       proj = {}; proj[@fld.name] = 1
@@ -458,7 +458,6 @@ Sunny.Deps = do ->
     # @param op [String]; 'add' or 'set'
     constructor: (@connId, @sig, @op) ->
       super(connId)
-      @prevResult = []
 
     toString: () -> "FindComp(#{@_id}): #{@op} #{@sig.name} for conn #{@connId}"
 
@@ -473,12 +472,13 @@ Sunny.Deps = do ->
         result = check.returnResult(records, [])
 
         if @op == "set"
-          for r in @prevResult
-            pub.removed @sig.name, r.id()
+          currentObjsOnClient = meta._getPubObjs(@connId)
+          for rId in Object.keys(currentObjsOnClient)
+            swarn "removing prev obj: #{r.id()} for conn #{@connId}"
+            pub.sunny_removed @sig.name, r.id()
 
-        @prevResult = result
         for r in result
-          pub.added @sig.name, r.id(), {}
+          pub.sunny_added @sig.name, r.id(), {}
           r._serFieldsForClient(@connId)
 
   # -----------------------------------------------------------------
@@ -691,8 +691,8 @@ wrap = (obj, fld, val) ->
     throw("field #{fld.name} in #{obj} is not unary") unless fld.type.isUnary()
     ans = convertMeteorArray(fld.type.domain(), val, convertObj)
     sa = createSunnyArray(obj, fld, ans.result)
-    for d in ans.dangling
-      sa._updateMongo("$pull", d.elem)
+    # for d in ans.dangling
+    #   sa._updateMongo("$pull", d.elem)
     return sa
 
 createSunnyArray = (sunnyOwnerObj, sunnyFld, array) ->
@@ -725,7 +725,7 @@ createSunnyArray = (sunnyOwnerObj, sunnyFld, array) ->
 
 Sunny.MetaModel = do ->
   # -----------------------------------------------------------------
-  #   class RecordMeta
+  #   class Field
   # -----------------------------------------------------------------
   class Field
     # @param name [String]
@@ -753,7 +753,8 @@ Sunny.MetaModel = do ->
     constructor: (fn, parentFn) ->
       @__repr__      = null
       @__pubs__      = {} # ConnId -> Meteor Publisher
-      @__objComps__  = {} # ConnId -> (ObjId -> FldName -> Sunny.Deps.Comp)
+      @__comps__     = {} # ConnId -> (String -> String -> Sunny.Deps.Comp)
+      @__pubObjs__   = {} # ConnId -> (String -> _)  (published objects for clients)
       @__objDeps__   = {} # ObjId -> FldName -> Sunny.Deps.Dep
       @__findDep__   = new Sunny.Deps.Dep("#{fn.name}::find")
       @klass         = new Sunny.Types.Klass(fn.name, false, fn, null)
@@ -782,17 +783,31 @@ Sunny.MetaModel = do ->
     _deleteObjDeps:   (objId) -> delete @__objDeps__[objId]
 
     _deleteConnComps: (connId) ->
-      for objId, fcomps of @__objComps__[connId]
-        for fname, comp of fcomps
+      for key1, fcomps of @__comps__[connId]
+        for key2, comp of fcomps
           comp.stop()
-      delete @__objComps__[connId] #TODO: stop comps???
+      delete @__comps__[connId]
 
     _deleteConnPubs: (connId) ->
       delete @__pubs__[connId]
 
-    _getObjComps: (connId, objId) ->
-      connComps = @__objComps__[connId] ?= {}
-      connComps[objId] ?= {}
+    _getPubObjs: (connId) ->
+      @__pubObjs__[connId] ?= {}
+
+    _getComp: (connId, objKey, fldKey, mkCompFn) ->
+      connComps = @__comps__[connId] ?= {}
+      objComps = connComps[objKey] ?= {}
+      objComps[fldKey] ?= mkCompFn()
+
+    _getObjFldComp: (connId, objId, fldName) ->
+      self = this
+      this._getComp connId, objId, fldName, () ->
+        new Sunny.Deps.FldComp(connId, self.sigCls.new(_id: objId), self.field(fldName))
+
+    _getSigFindComp: (connId, op) ->
+      self = this
+      this._getComp connId, ":find:", op, () ->
+        new Sunny.Deps.FindComp(connId, self.sigCls, op)
 
     _getObjFldDeps: (objId, fldName) ->
       depName = "#{@name}(#{objId}).#{fldName}::change"
@@ -965,7 +980,7 @@ Sunny.Model = do ->
       return okFlds
 
     _serFieldForClient: (connId, fld, fldVal) ->
-      fldComp = new Sunny.Deps.FldComp(connId, this, fld)
+      fldComp = this.meta()._getObjFldComp(connId, this.id(), fld.name)
       fldComp.exe(fldVal)
 
     _toMeteorRef: () -> _id: this.id(), _sunny_type: this.type()
@@ -1027,7 +1042,7 @@ Sunny.Model = do ->
       # @param op [String]; 'add' or 'set'
       # @param records [Record list]
       _serRecordsForClient: (connId, op, records) ->
-        findComp = new Sunny.Deps.FindComp(connId, this, op)
+        findComp = this.__meta__._getSigFindComp(connId, op)
         findComp.exe(records)
     }
 
@@ -1561,10 +1576,10 @@ Sunny.ACL = do ->
               sdebug "  -> denied"
               return outcome # denied; return
             else if outcome.isAllowed()
-              msg = "  -> allowed";             
+              msg = "  -> allowed";
               if outcome.hasValue()
                 msg = msg + " (restricted)"
-                msg += ": #{outcome.value.length}" if outcome.value instanceof Array              
+                msg += ": #{outcome.value.length}" if outcome.value instanceof Array
               sdebug msg
               currVal = outcome.value if outcome.hasValue()
               currOutcome = outcome if outcome.hasValue() or not currOutcome
@@ -1817,11 +1832,32 @@ Meteor.methods(mthds)
 # ====================================================================================
 #   Manage publish/subscribe of collections
 # ====================================================================================
+
+wrapPublisher = (pub, kls) ->
+  connId = pub.connection.id
+  pubObjs = kls.__meta__._getPubObjs(connId)
+
+  pub.sunny_added = (name, id, flds) ->
+    pubObjs[id] = id
+    pub.added(name, id, flds)
+
+  pub.sunny_removed = (name, id) ->
+    if pubObjs.hasOwnProperty(id)
+      delete pubObjs[id]
+      pub.removed(name, id)
+
+  pub.sunny_changed = (name, id, flds) ->
+    if pubObjs.hasOwnProperty(id)
+      pub.changed(name, id, flds)
+
+  pub
+
 Meteor.startup () ->
   if Meteor.isServer
     for klsName, kls of Sunny.Meta.recordsAndMachinesAndBuiltin()
       do (klsName, kls) ->
-        col = kls.__meta__.repr()
+        meta = kls.__meta__
+        col = meta.repr()
 
         col.allow
           insert: (userId, obj) -> true
@@ -1832,41 +1868,44 @@ Meteor.startup () ->
           obj = kls.new(_id: id)
           obj._serFieldsForClient(connId, flds)
 
-        foreachpub = (kls, cb) ->
-          for connId, pub of kls.__meta__.__pubs__
+        foreachpub = (op, kls, objId, cb) ->
+          for connId, pub of meta.__pubs__
             Sunny._currConnId.set(connId)
-            cb(connId, pub)
+            try
+              cb(connId, pub)
+            catch err
+              swarn "could not send '#{op}' to client with connId '#{connId}'"
 
         isInit = true
         handle = col.find({}).observeChanges
           added: (id, flds) ->
             return if isInit
             sdebug "@@@@@@@@@@@ #{klsName}(#{id}) added"
-            Sunny.Queue.runAsInvocation "mongo_added", () -> kls.__meta__.__findDep__.changed()
-            foreachpub kls, (connId, pub) ->
+            Sunny.Queue.runAsInvocation "mongo_added", () -> meta.__findDep__.changed()
+            foreachpub 'added', kls, id, (connId, pub) ->
               kls._serRecordsForClient(connId, "add", [kls.new(_id: id)])
           removed: (id) ->
             return if isInit
             sdebug "@@@@@@@@@@@ #{klsName}(#{id}) removed"
-            kls.__meta__._deleteObjDeps()
-            Sunny.Queue.runAsInvocation "mongo_removed", () -> kls.__meta__.__findDep__.changed()
-            foreachpub kls, (connId, pub) -> pub.removed klsName, id
+            meta._deleteObjDeps()
+            Sunny.Queue.runAsInvocation "mongo_removed", () -> meta.__findDep__.changed()
+            foreachpub 'removed', kls, id, (connId, pub) -> pub.sunny_removed klsName, id
           changed: (id, flds) ->
             return if isInit
             sdebug "@@@@@@@@@@@ #{klsName}(#{id}).#{Object.keys(flds).join(',')} changed"
             Sunny.Queue.runAsInvocation "mongo_changed", () ->
-              kls.__meta__.__findDep__.changed()
-              kls.__meta__._getObjFldDeps(id, fname).changed() for fname, fval of flds
-            foreachpub kls, (connId, pub) ->
+              meta.__findDep__.changed()
+              meta._getObjFldDeps(id, fname).changed() for fname, fval of flds
+            foreachpub 'changed', kls, id, (connId, pub) ->
               filterFields(connId, id, flds)
 
         isInit = false
 
         Meteor.publish klsName, () ->
-          self = this
+          self = wrapPublisher(this, kls)
           connId = self.connection.id
           Sunny._currConnId.set(connId)
-          kls.__meta__.__pubs__[connId] = self
+          meta.__pubs__[connId] = self
           sdebug("publishing #{klsName}")
 
           if Sunny.ACL.applicablePolicies(new OpFind(kls)).length > 0
@@ -1874,17 +1913,17 @@ Meteor.startup () ->
           else
             # call `added' for the object currently found in the collection
             # slightly faster than the above
-            h = kls.__meta__.__repr__.find({}).observeChanges
+            h = meta.__repr__.find({}).observeChanges
               added: (id, flds) ->
-                self.added klsName, id, {}
+                self.sunny_added klsName, id, {}
                 filterFields(connId, id, flds)
             h.stop()
 
           self.ready()
           self.onStop ()->
             # handle.stop()
-            delete kls.__meta__._deleteConnComps(connId)
-            delete kls.__meta__._deleteConnPubs(connId)
+            delete meta._deleteConnComps(connId)
+            delete meta._deleteConnPubs(connId)
 
   if Meteor.isClient
     for klsName, kls of Sunny.Meta.recordsAndMachinesAndBuiltin()
