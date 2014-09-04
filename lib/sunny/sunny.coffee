@@ -453,13 +453,24 @@ Sunny.Deps = do ->
   class FindComp extends CustomComp
     # @param connId [String]
     # @param sig [Function] (Record type)
-    # @param op [String]; 'add' or 'set'
-    constructor: (@connId, @sig, @op) ->
+    constructor: (@connId, @sig) ->
       super(connId)
 
-    toString: () -> "FindComp(#{@_id}): #{@op} #{@sig.name} for conn #{@connId}"
+    toString: () -> "FindComp(#{@_id}): #{@sig.name} for conn #{@connId}"
 
-    exe: (records) ->
+    addRecords: (records) ->
+      meta = @sig.__meta__
+      sig = @sig
+      this._exe meta, (pub, clnt) ->
+        check = Sunny.Deps.withComp this, () ->
+          onClientBehalf clnt, () ->
+            Sunny.ACL.check_find(sig, records)
+        result = check.returnResult(records, [])
+        for r in result
+          pub.sunny_added @sig.name, r.id(), {}
+          r._serFieldsForClient(@connId)
+
+    setRecords: (records) ->
       meta = @sig.__meta__
       sig = @sig
       this._exe meta, (pub, clnt) ->
@@ -469,15 +480,25 @@ Sunny.Deps = do ->
             Sunny.ACL.check_find(sig, records)
         result = check.returnResult(records, [])
 
-        if @op == "set"
-          currentObjsOnClient = meta._getPubObjs(@connId)
-          for rId in Object.keys(currentObjsOnClient)
-            swarn "removing prev obj: #{@sig.name}(#{rId}) for conn #{@connId}"
-            pub.sunny_removed @sig.name, rId
-
+        currentObjs = meta._getPubObjs(@connId)
+        diffAdd = []
+        diffRem = {}
+        diffRem[id] = id for id, id of currentObjs
         for r in result
+          if not currentObjs[r.id()]
+            diffAdd.push r
+          else
+            delete diffRem[r.id()]
+
+        for rId in Object.keys(diffRem)
+          swarn "removing prev obj: #{@sig.name}(#{rId}) for conn #{@connId}"
+          pub.sunny_removed @sig.name, rId
+
+        for r in diffAdd
           pub.sunny_added @sig.name, r.id(), {}
           r._serFieldsForClient(@connId)
+
+    exe: () -> this.setRecords()
 
   # -----------------------------------------------------------------
   #   class Dep
@@ -805,10 +826,10 @@ Sunny.MetaModel = do ->
       this._getComp connId, objId, fldName, () ->
         new Sunny.Deps.FldComp(connId, self.sigCls.new(_id: objId), self.field(fldName))
 
-    _getSigFindComp: (connId, op) ->
+    _getSigFindComp: (connId) ->
       self = this
-      this._getComp connId, ":find:", op, () ->
-        new Sunny.Deps.FindComp(connId, self.sigCls, op)
+      this._getComp connId, ":find:", "set", () ->
+        new Sunny.Deps.FindComp(connId, self.sigCls)
 
     _getObjFldDeps: (objId, fldName) ->
       depName = "#{@name}(#{objId}).#{fldName}::change"
@@ -1038,13 +1059,6 @@ Sunny.Model = do ->
                 []
             for p in ps
               Sunny.Meta.policies.push(p)
-
-      # @param connId [String]
-      # @param op [String]; 'add' or 'set'
-      # @param records [Record list]
-      _serRecordsForClient: (connId, op, records) ->
-        findComp = this.__meta__._getSigFindComp(connId, op)
-        findComp.exe(records)
     }
 
   # -----------------------------------------------------------------
@@ -1524,16 +1538,14 @@ Sunny.Dsl = do ->
       server: SunnyServer
 
 
-
-
 # ====================================================================================
 #   Access Control Stuff
 # ====================================================================================
 Sunny.ACL = do ->
   _checkHistory = new Sunny.Utils.FiberLocalVar("Sunny.ACL.checkHistory")
+  _inACLcheck = new Sunny.Utils.FiberLocalVar("Sunny.ACL._inACLcheck")
   _accessDeniedListeners = []
   _allowByDefault = true
-  _inACLcheck = false
   _allowOutcome = new Sunny.Model.PolicyOutcome(true)
   _denyOutcome  = new Sunny.Model.PolicyOutcome(false, undefined, "denied by default")
 
@@ -1573,8 +1585,8 @@ Sunny.ACL = do ->
   check:        (op) ->
     outcome = do ->
       return _allowOutcome unless Sunny.myClient() # executing on behalf of Server -> ok
-      return _allowOutcome if _inACLcheck
-      _inACLcheck = true
+      return _allowOutcome if _inACLcheck.get(false)
+      _inACLcheck.set(true)
       try
         poli = Sunny.ACL.applicablePolicies(op)
         if poli.length == 0
@@ -1603,11 +1615,14 @@ Sunny.ACL = do ->
           else
             return _defaultOutcome()
       finally
-        _inACLcheck = false
+        _inACLcheck.set(false)
 
     _checkHistory.push op: op, outcome: outcome
     return outcome
 
+# ====================================================================================
+#   _CRUD
+# ====================================================================================
 Sunny._CRUD = do ->
 
   create: (sig, props) ->
@@ -1848,6 +1863,9 @@ Meteor.methods(mthds)
 #   Manage publish/subscribe of collections
 # ====================================================================================
 
+
+
+
 wrapPublisher = (pub, kls) ->
   connId = pub.connection.id
   pubObjs = kls.__meta__._getPubObjs(connId)
@@ -1865,7 +1883,7 @@ wrapPublisher = (pub, kls) ->
 
   pub.sunny_changed = (name, id, flds) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> #{name}(#{id}) changed"
+      sdebug ">>>> #{name}(#{id}) changed: #{Object.keys(flds).join(', ')}"
       pub.changed(name, id, flds)
 
   pub
@@ -1901,7 +1919,9 @@ Meteor.startup () ->
             sdebug "@@@@@@@@@@@ #{klsName}(#{id}) added"
             Sunny.Queue.runAsInvocation "mongo_added", () -> meta.__findDep__.changed()
             foreachpub 'added', kls, id, (connId, pub) ->
-              kls._serRecordsForClient(connId, "add", [kls.new(_id: id)])
+              findComp = kls.__meta__._getSigFindComp(connId)
+              findComp.addRecords([kls.new(_id: id)])
+              # kls._serRecordsForClient(connId, "add", [kls.new(_id: id)])
           removed: (id) ->
             return if isInit
             sdebug "@@@@@@@@@@@ #{klsName}(#{id}) removed"
@@ -1926,7 +1946,8 @@ Meteor.startup () ->
           meta.__pubs__[connId] = self
           sdebug "SUB '#{klsName}' from #{connId}"
 
-          kls._serRecordsForClient(connId, "set")
+          kls.__meta__._getSigFindComp(connId).setRecords()
+
           # if Sunny.ACL.applicablePolicies(new OpFind(kls)).length > 0
           #   kls._serRecordsForClient(connId, "set")
           # else
