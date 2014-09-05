@@ -1,0 +1,13 @@
+<template name="_task">
+<!-- These are here just to show the structure of the list items -->
+<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
+<li class="{{#if this.done}}completed{{/if}}">
+  <div class="view">
+    <input class="toggle" type="checkbox" checked="{{#if this.done}}checked{{/if}}"
+           {{sunny_trigger event="ToggleDone" task=this}}>
+    <label {{editableField obj=this fld="desc"}}>{{this.desc}}</label>
+    <button class="destroy" {{sunny_trigger event="Destroy" obj=this}}></button>
+  </div>
+  <input class="edit" value="{{this.desc}}">
+</li>
+</template>
