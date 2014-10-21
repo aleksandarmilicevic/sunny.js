@@ -116,16 +116,46 @@ event class LeaveRoom extends ClientEvent
 #       return this.allow() if user.equals(this.client?.user)
 #       return this.deny("can't edit other people's data")
 
-# policy Client,
-#   _precondition: (clnt) -> 
+#   read:
+#     status: (user, status) ->
+#       return this.allow() if user.equals(this.client?.user)
+#       self = this
+#       if this.server.rooms.some((room) -> room.members.containsAll([user, self.client.user]))
+#         return this.allow()
+#       else
+#         return this.deny()
 
+# policy Client,
 #   read:
 #     user: (clnt, user) ->
 #       return this.allow() if clnt.equals(this.client)
-#       if clnt?.user?.status == "busy"
+#       if user?.status == "busy"
 #         return this.deny()
 #       else
 #         return this.allow()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ------------------------------

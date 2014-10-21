@@ -2,9 +2,7 @@
     <div class="User list-group-item {{#if isMe this.user}}me{{/if}}">
       {{#if avatar}}
         {{#if user}}
-          <img src="/images/gnuhead.png" width="45"/>
-        {{else}}
-          <img src="/images/anonymous-50x50.png" width="45"/>
+          <img src="/images/{{user.name}}.jpg" width="45"/>
         {{/if}}
       {{/if}}
       <div class="user-name-status">
@@ -17,9 +15,9 @@
           <h4 class="list-group-item-heading">{{salute this.user}}</h4>
         {{/if}}
         {{#if status}}
-          <!-- <p class="list-group-item-text"> -->
-          <!--   <a {{editableField obj=this.user fld="status"}}>{{this.user.statusText}}</a> -->
-          <!-- </p> -->
+          <p class="list-group-item-text">
+            <!-- <a {{editableField obj=this.user fld="status"}}>{{this.user.statusText}}</a> -->
+          </p>
         {{/if}}
       </div>
     </div>
