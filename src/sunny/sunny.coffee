@@ -1863,9 +1863,6 @@ Meteor.methods(mthds)
 #   Manage publish/subscribe of collections
 # ====================================================================================
 
-
-
-
 wrapPublisher = (pub, kls) ->
   connId = pub.connection.id
   pubObjs = kls.__meta__._getPubObjs(connId)
