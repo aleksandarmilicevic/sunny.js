@@ -1342,6 +1342,21 @@ Sunny.Model = do ->
     contains: (obj) ->
       return this.findIndex(this._equalsFn(obj)) != -1
 
+    containsAll: (arr) ->
+      for obj in arr
+        return false if not this.contains(obj)
+      return true
+
+    all: (fn) ->
+      for elem in this
+        return false if not fn(elem)
+      return true
+
+    some: (fn) ->
+      for elem in this
+        return true if fn(elem)
+      return false
+
   Sig           : Sig
   Record        : Record
   Machine       : Machine
