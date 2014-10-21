@@ -7,9 +7,9 @@ Sunny.Conf.serverRecordPersistence = 'replace'
 # ============================ RECORDS ======================================
 
 user class User
-  status: Text
-
-  statusText: () -> this.status || "<statusless>"
+  # status: Text
+  # statusText: () -> this.status || "...statusless..."
+  salute: () -> "hello #{this.name}"
 
 record class Msg
   text: Text
@@ -110,36 +110,22 @@ event class LeaveRoom extends ClientEvent
     
 # ============================ POLICIES ======================================
 
+# policy User,
+#   update:
+#     "*": (user, val) ->
+#       return this.allow() if user.equals(this.client?.user)
+#       return this.deny("can't edit other people's data")
 
-policy User,
-  _precondition: (user) -> not user.equals(this.client?.user)
+# policy Client,
+#   _precondition: (clnt) -> 
 
-  read:
-    "! name, status": -> return this.deny("can't read User's private data")
-    
-  update:
-    "*": (user, val) -> return this.deny("can't edit other people's data")
-
-policy Client,
-  _precondition: (clnt) -> not clnt.equals(this.client)
-
-  read:
-    user: (clnt, user) ->
-       if clnt?.user?.status == "busy"
-         return this.deny()
-       else
-         return this.allow()
-
-# show messages starting with "#private" only to members
-policy ChatRoom,
-  read:
-    messages: (room, msgs) ->
-      return this.deny() if not this.client?.user
-      if room.members.contains this.client?.user
-        return this.allow()
-      else
-        return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
-
+#   read:
+#     user: (clnt, user) ->
+#       return this.allow() if clnt.equals(this.client)
+#       if clnt?.user?.status == "busy"
+#         return this.deny()
+#       else
+#         return this.allow()
 
 
 # ------------------------------
