@@ -107,6 +107,16 @@ Sunny.Fun = do ->
       ans.push e if cb(e)
     return ans
 
+  all: (col, cb) ->
+    for e in col
+      return false if not cb(e)
+    return true
+    
+  some: (col, cb) ->
+    for e in col
+      return true if cb(e)
+    return false
+
 Sunny.simportAll(this, Sunny.Fun)
 
 # ====================================================================================

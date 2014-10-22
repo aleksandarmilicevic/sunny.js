@@ -8,7 +8,6 @@ Sunny.Conf.serverRecordPersistence = 'replace'
 
 user class User
   # status: Text
-  # statusText: () -> this.status || "...statusless..."
   salute: () -> "hello #{this.name}"
 
 record class Msg
@@ -120,7 +119,7 @@ event class LeaveRoom extends ClientEvent
 #     status: (user, status) ->
 #       return this.allow() if user.equals(this.client?.user)
 #       self = this
-#       if this.server.rooms.some((room) -> room.members.containsAll([user, self.client.user]))
+#       if some(this.server.rooms, (room) -> room.members.containsAll([user, self.client.user]))
 #         return this.allow()
 #       else
 #         return this.deny()
@@ -133,6 +132,15 @@ event class LeaveRoom extends ClientEvent
 #         return this.deny()
 #       else
 #         return this.allow()
+
+# policy ChatRoom,
+#   read:
+#     messages: (room, msgs) ->
+#       return this.deny() if not this.client?.user
+#       if room.members.contains this.client?.user
+#         return this.allow()
+#       else
+#         return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
 
 
 
