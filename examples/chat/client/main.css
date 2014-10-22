@@ -262,3 +262,16 @@ div.name {
     float: right;
     margin: 5px 2px 5px 2px;
 }
+
+/* .glyphicon-remove, .glyphicon-remove:hover { */
+/*    background-image: url('/images/glyphicon-remove.png') !important; */
+/*    background-position: 0px, 0px; */
+/* } */
+
+.glyphicon-remove:before {
+  content: "✖" !important;
+}
+
+.glyphicon-ok:before {
+  content: "✔" !important;
+}
