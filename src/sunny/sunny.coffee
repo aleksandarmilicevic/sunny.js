@@ -1484,11 +1484,12 @@ Sunny.Dsl = do ->
 
       # helpers for each param
       for pName in evKls.__meta__.allParams()
-        UI.registerHelper "#{evKls.name}_#{pName}", (ctx) ->
-          if not ctx
-            return "sunny-event-param": "#{evKls.name}.#{pName}"
-          else
-            return {}
+        do(pName) ->
+          UI.registerHelper "#{evKls.name}_#{pName}", (ctx) ->
+            if not ctx
+              return "sunny-event-param": "#{evKls.name}.#{pName}"
+            else
+              return {}
 
     return evKls
 
