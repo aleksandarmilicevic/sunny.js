@@ -1,0 +1,60 @@
+<head>
+
+<!-- <link rel="stylesheet" href="/css/bootstrap.css"> -->
+<!-- <link rel="stylesheet" href="/css/bootstrap-theme.css"> -->
+<!-- <link  rel="stylesheet" href="/css/bootstrap-editable.css"/> -->
+<script src="/js/jquery-2.0.3.js"></script> 
+<script src="/js/bootstrap.js"></script>
+<script src="/js/bootstrap-editable.js"></script>
+
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.css">
+<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.css">
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/css/bootstrap-editable.css"/>
+<!-- <script src="http://code.jquery.com/jquery-2.0.3.js"></script>  -->
+<!-- <script src="//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.js"></script> -->
+<!-- <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.js"></script> -->
+
+  <title>Sunny Album Share</title>
+
+</head>
+
+<body>
+
+
+  <div class="title-bar navbar navbar-inverse">
+    <div class="container" style="height: 0px">
+      <div id="app-title" class="navbar-header attach-left">
+        <a id="brand" href="#">
+          <img src="/images/sunny-48.png" width="48px"/> 
+          Sunny Album
+        </a>
+      </div>
+    </div>
+    <div class="container user-buttons">
+      <div style="float:left">
+        <a {{sunny_trigger event="CreateAlbum"  }}>
+          <img src="/images/chat.png" width="48px" height="48px" /> 
+          Create Album
+        </a>
+      </div>
+      {{> _user user=Client.user avatar=true status=false editableName=true}}
+      {{> loginButtons}}
+    </div>
+  </div>
+
+  <div class="container" style="height: 0px">
+    <div id="online-users" class="attach-left" >
+      {{> online_users}}
+    </div>
+  </div>
+  <div class="container">
+    <div id="chatroom-container" class="row">
+      {{> irc}}
+    </div>
+  </div>
+
+  <div>
+    <a href="data.html">See Data</a>
+  </div>
+
+</body>

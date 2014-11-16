@@ -1,0 +1,49 @@
+<template name="_album">
+<h3>lol</h3>
+<div class="ChatRoom panel panel-primary">
+   <div class="panel-heading">
+      <div class="panel-title">
+        <a {{editableField obj=this.album fld="name"}}>{{album.title}}</a>
+        <div class="pull-right">
+          <span>
+            owner: {{album.owner.name}}
+          </span>
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+                {{sunny_trigger event="Destroy" obj=this.album}}>
+          </span>
+        </div>
+      </div>
+      <div {{AddPhoto album=this.album}} 
+        class="SendMsgForm form-inline" 
+        onkeypress="return event.keyCode != 13;">
+          <div class="form-group">
+            <input type="text" name="photoTitle" 
+                    placeholder="Enter Title"
+                    {{AddPhoto_photoTitle}}/>
+             <input type="text" name="photoLink" 
+                    placeholder="Enter URL"
+                    {{AddPhoto_photoLink}}/>
+          </div>
+          <button class="btn btn-default SendMsg" 
+                 {{sunny_trigger}}>
+           Add
+          </button>
+    </div>
+   <br>
+   <br>
+
+      {{#each album.photos}}
+         <li class="Msg list-group-item">
+           <b><span class="sender">{{salute this.sender}}</span></b>: 
+           <span class="msg" {{editableField obj=this fld="link"}}>{{this.getlink}}</span>
+           <span class="msg" {{editableField obj=this fld="title"}}>{{this.gettitle}}</span>
+           <span class="pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+              {{sunny_trigger event="Destroy" obj=this}}>
+           </span>
+         </li>
+       {{/each}}
+   </div>
+
+   
+</div>
+</template>
