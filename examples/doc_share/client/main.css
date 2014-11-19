@@ -1,6 +1,30 @@
 .container {
     width: 650px !important;
 }
+.inlineb{
+    display: inline-block;
+}
+.top{
+    vertical-align: top;
+}
+.album-main{
+    width: 63%;
+    border-radius: 10px;
+    margin: 20px;
+    background-color: #8db9df;
+}
+#online-users{
+    width: 30%;
+    border-radius: 10px;
+    margin: 20px;
+    background-color: #f9f381;
+}
+.create-button{
+    display: block;
+}
+.photo-list{
+    color: black;
+}
 
 .frame {
   border: 1px solid #dddddd;
@@ -50,8 +74,6 @@ a#brand {
     font-size: 14pt;
 }
 
-#chatroom-container {
-}
 
 .empty-col {
     width: 100%;

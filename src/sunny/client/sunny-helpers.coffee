@@ -66,3 +66,4 @@ if Meteor.isClient
       if typeof(pvalue._inspect) == "function"
         pvalue = "$<#{pvalue._inspect()}>"
       hash[pname] = pvalue
+      

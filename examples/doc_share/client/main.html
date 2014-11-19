@@ -19,8 +19,13 @@
 </head>
 
 <body>
+  <script type="text/javascript">
+    Router.route("main", { path : '/' });
+    Router.route("data", { path : '/data' });
+  </script>
+</body>
 
-
+<template name="main">
   <div class="title-bar navbar navbar-inverse">
     <div class="container" style="height: 0px">
       <div id="app-title" class="navbar-header attach-left">
@@ -31,30 +36,33 @@
       </div>
     </div>
     <div class="container user-buttons">
-      <div style="float:left">
-        <a {{sunny_trigger event="CreateAlbum"  }}>
-          <img src="/images/chat.png" width="48px" height="48px" /> 
-          Create Album
-        </a>
-      </div>
       {{> _user user=Client.user avatar=true status=false editableName=true}}
       {{> loginButtons}}
     </div>
   </div>
-
-  <div class="container" style="height: 0px">
-    <div id="online-users" class="attach-left" >
+  <div class="inlineb" style="width:100%;">
+    <div class="inlineb album-main top">
+    <h3>My Albums</h3>
+      <div>
+        <button class="btn create-button" {{sunny_trigger event="CreateAlbum"  }}>
+        Create Album
+      </button>
+      </div>
+      
+      <div id="chatroom-container" class="inlineb">
+        {{> irc}}
+      </div>
+    </div>
+    
+    <div id="online-users" class="inlineb top" >
+      <h3>My Friends</h3>
       {{> online_users}}
     </div>
-  </div>
-  <div class="container">
-    <div id="chatroom-container" class="row">
-      {{> irc}}
+    <div>
+      <button id="view-data-model">See Data Models</button>
+      <a href="/data">Data</a>
     </div>
   </div>
+</template>
+  
 
-  <div>
-    <a href="data.html">See Data</a>
-  </div>
-
-</body>

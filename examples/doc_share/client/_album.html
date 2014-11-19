@@ -1,5 +1,4 @@
 <template name="_album">
-<h3>lol</h3>
 <div class="ChatRoom panel panel-primary">
    <div class="panel-heading">
       <div class="panel-title">
@@ -31,17 +30,20 @@
     </div>
    <br>
    <br>
-
-      {{#each album.photos}}
-         <li class="Msg list-group-item">
-           <b><span class="sender">{{salute this.sender}}</span></b>: 
-           <span class="msg" {{editableField obj=this fld="link"}}>{{this.getlink}}</span>
-           <span class="msg" {{editableField obj=this fld="title"}}>{{this.gettitle}}</span>
-           <span class="pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
-              {{sunny_trigger event="Destroy" obj=this}}>
-           </span>
-         </li>
-       {{/each}}
+      <ul class="list-group photo-list">
+        {{#each album.photos}}
+           <li class="list-group-item">
+            <img src="{{getlink}}">
+             <span class="" {{editableField obj=this fld="link"}}>Click to edit link</span>
+             <span class="" {{editableField obj=this fld="title"}}>{{gettitle}}</span>
+             <span class="pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+                {{sunny_trigger event="Destroy" obj=this}}>
+             </span>
+           </li>
+         {{/each}}
+        
+      </ul>
+      
    </div>
 
    
