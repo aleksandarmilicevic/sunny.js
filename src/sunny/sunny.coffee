@@ -619,8 +619,8 @@ Sunny.Types = do ->
     range: () ->
       return this.klasses[this.klasses.length - 1].constrFn
 
-  __exports__ : ["Int", "Bool", "Text", "Klass", "Type", "Obj", "Val", "Enum", "enums",
-                 "one", "set", "compose", "owns"]
+  __exports__ : ["Int", "Bool", "Real", "Date", "Text", "Klass", "Type", "Obj", "Val", "Enum", 
+                 "enums", "one", "set", "compose", "owns"]
 
   Klass     : Klass
   Type      : Type
@@ -628,6 +628,8 @@ Sunny.Types = do ->
   Obj       : new Klass "Obj", false, null
   Val       : new Klass "Val", true, null
   Int       : new Klass "Int", true, 0
+  Real      : new Klass "Real", true, 0.0
+  Date      : new Klass "Date", true, null #() -> Date.now()
   Bool      : new Klass "Bool", true, false
   Text      : new Klass "Text", true, null
   isKlass   : (fn) -> typeof(fn) == "function" and fn.__meta__?
