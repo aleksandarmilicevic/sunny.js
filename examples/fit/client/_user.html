@@ -1,0 +1,25 @@
+<template name="_user">
+    <div class="User list-group-item">
+      {{#if avatar}}
+        {{#if user}}
+          <img src="/images/gnuhead.png" width="45"/>
+        {{else}}
+          <img src="/images/anonymous-50x50.png" width="45"/>
+        {{/if}}
+      {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <span id="username" {{editableField obj=this.user fld="name"}}>
+            {{salute this.user}}
+          </span>
+        {{else}}
+          <span id="username">{{salute this.user}}</span>
+        {{/if}}
+        {{#if settings}}
+          <button id="settings" data-toggle="modal" data-target="#settingsDiag">
+            <a><span class="glyphicon glyphicon-cog"></span></a>
+          </button>
+        {{/if}}
+      </div>
+    </div>
+</template>

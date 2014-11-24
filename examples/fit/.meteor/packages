@@ -6,6 +6,6 @@
 standard-app-packages
 accounts-password
 accounts-base
-bootstrap
+# bootstrap
 coffeescript
 accounts-ui
