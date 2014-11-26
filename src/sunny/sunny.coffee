@@ -107,6 +107,16 @@ Sunny.Fun = do ->
       ans.push e if cb(e)
     return ans
 
+  all: (col, cb) ->
+    for e in col
+      return false if not cb(e)
+    return true
+    
+  some: (col, cb) ->
+    for e in col
+      return true if cb(e)
+    return false
+
 Sunny.simportAll(this, Sunny.Fun)
 
 # ====================================================================================
@@ -619,7 +629,7 @@ Sunny.Types = do ->
     range: () ->
       return this.klasses[this.klasses.length - 1].constrFn
 
-  __exports__ : ["Int", "Bool", "Text", "Klass", "Type", "Obj", "Val", "Enum", "enums",
+  __exports__ : ["Int", "Bool", "Real", "DateTime", "Text", "Klass", "Type", "Obj", "Val", "Enum", "enums",
                  "one", "set", "compose", "owns"]
 
   Klass     : Klass
@@ -628,6 +638,8 @@ Sunny.Types = do ->
   Obj       : new Klass "Obj", false, null
   Val       : new Klass "Val", true, null
   Int       : new Klass "Int", true, 0
+  Real      : new Klass "Real", true, 0.0
+  DateTime  : new Klass "DateTime", true, () -> Date.now()
   Bool      : new Klass "Bool", true, false
   Text      : new Klass "Text", true, null
   isKlass   : (fn) -> typeof(fn) == "function" and fn.__meta__?
@@ -1342,6 +1354,21 @@ Sunny.Model = do ->
     contains: (obj) ->
       return this.findIndex(this._equalsFn(obj)) != -1
 
+    containsAll: (arr) ->
+      for obj in arr
+        return false if not this.contains(obj)
+      return true
+
+    all: (fn) ->
+      for elem in this
+        return false if not fn(elem)
+      return true
+
+    some: (fn) ->
+      for elem in this
+        return true if fn(elem)
+      return false
+
   Sig           : Sig
   Record        : Record
   Machine       : Machine
@@ -2045,5 +2072,6 @@ if Meteor.isServer
   # Reset Client.user whenever login fails
   Accounts.onLoginFailure (x) ->
     console.log "on login failure"
-    clnt = getSunnyClient(x.connection.id) and clnt.user = null
+    clnt = getSunnyClient(x.connection.id)
+    clnt.user = null if clnt
 

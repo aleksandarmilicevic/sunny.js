@@ -1,0 +1,28 @@
+<template name="_user_act">
+  {{#if user}}
+  {{#if this.editable}}
+    {{#each user.activities}}
+      <div>
+        <a style="cursor:pointer;margin-right:3pt"
+           {{sunny_trigger event="Destroy" obj=this}} >
+          <span class="alert-danger glyphicon glyphicon-remove"></span>
+        </a>
+        <tt>{{date}}</tt>: 
+        <b>{{kind}}</b> for 
+        <span {{editableField obj=this fld="mDuration"}}>{{mDuration}}</span> minutes, 
+        covered <span {{editableField obj=this fld="mDistance"}}>{{mDistance}}</span> km
+      </div>
+    {{/each}}
+  {{else}}
+    {{#each user.activities}}
+      <div>
+        <tt>{{date}}</tt>: 
+        <b>{{kind}}</b> for 
+        <span>{{mDuration}}</span> minutes, 
+        covered <span>{{mDistance}}</span> km
+      </div>      
+    {{/each}}
+  {{/if}}
+  {{/if}}
+</template>
+

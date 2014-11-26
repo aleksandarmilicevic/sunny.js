@@ -1,0 +1,65 @@
+<template name="_add_act">
+
+  <!-- Trigger Modal -->
+  <a id="addact" data-toggle="modal" data-target="#addActDiag">Add Activity</a>
+
+  <!-- Modal -->
+  <div class="modal fade" id="addActDiag" tabindex="-1" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content"  {{AddActivity}}>
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+        <h4 class="modal-title">Add New Activity</h4>
+      </div>
+      <div class="modal-body">
+        <form class="form-horizontal" role="form">
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="kind">Activity Kind</label>
+            <div class="col-sm-4">
+              <select class="form-control" id="kind" {{AddActivity_kind}}>
+                <option>Walking</option>
+                <option>Running</option>
+                <option>Cycling</option>
+                <option>Swimming</option>
+                <option>Lifting</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="date">Date</label>
+            <div class="col-sm-4">
+              <!-- <input type="text" class="form-control" id="inputDate" placeholder="date" value="02/16/12" data-date-format="mm/dd/yy"/> -->
+              <!-- <input type="text"  value="{{formatTodayDate}}"/> -->
+              <input type="date" style="height:auto" class="form-control" id="date" placeholder="date"
+                      {{AddActivity_date}} >
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="startTime">Start Time</label>
+            <div class="col-sm-4"><input style="height:auto" type="time" class="form-control" id="startTime"
+                                          {{AddActivity_time}} ></div>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="duration">Duration</label>
+            <div class="col-sm-4"><input style="height:auto" type="number" class="form-control" id="duration" 
+                                          {{AddActivity_duration}} ></div>
+            <label class="col-sm-1 control-label">min</label>
+          </div>
+          <div class="form-group">
+            <label class="col-sm-3 control-label" for="distance">Distance</label>
+            <div class="col-sm-4"><input style="height:auto" type="number" class="form-control" id="distance"
+                                         {{AddActivity_distance}} ></div>
+            <label class="col-sm-1 control-label">km</label>
+          </div>
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" data-dismiss="modal" {{sunny_trigger}}>Add</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+</template>
