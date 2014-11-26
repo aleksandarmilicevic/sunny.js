@@ -8,16 +8,18 @@
     vertical-align: top;
 }
 .album-main{
-    width: 63%;
+    width: 74%;
     border-radius: 10px;
     margin: 20px;
     background-color: #8db9df;
 }
 #online-users{
-    width: 30%;
+    width: 20%;
     border-radius: 10px;
-    margin: 20px;
+    margin: 10px;
+    margin-top: 20px;
     background-color: #f9f381;
+    text-align: center;
 }
 .create-button{
     display: block;
@@ -25,7 +27,88 @@
 .photo-list{
     color: black;
 }
+.albumHeader{
+    width: 80%;
+    margin-left: 20px;
+}
 
+.Album {
+    border: 1px solid;
+    margin: 2%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 5px;
+    display: block;
+    width: 95%;
+    height: 400px;
+    vertical-align: top;
+    overflow-y: auto; 
+
+}
+
+.Album .panel-heading {
+    padding: 3px;
+}
+
+.Album .panel-title {
+    padding-left: 5px;
+}
+
+.Album .panel-title a {
+    border-bottom-color: white;
+}
+
+.Album .panel-title a:hover {
+    border-bottom-color: white;
+    color: #bce8f1;
+}
+#album-container{
+    width: 100%;
+}
+
+.addPhotoForm{
+    background-color: yellow;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+.addPhotoForm input{
+    width: 250px;
+    height: 35px;
+}
+
+.photo-thumbnail{
+    width: 204px;
+    background-color: white;
+    vertical-align: top;
+    height: 165px;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px;
+    color: black;
+}
+.photo-thumbnail img{
+    height: 95px;
+}
+.photo-exit{
+
+}
+.photo-image{
+
+}
+.photo-title{
+    font-size: 18px;
+    font-weight: bold;
+}
+.photo-title div{
+    display: inline-block;
+}
+.photo-linkedit{
+    font-size: 15px;
+}
+.photo-linkedit div{
+    display: inline-block;
+}
 .frame {
   border: 1px solid #dddddd;
 }
@@ -119,42 +202,13 @@ a#brand {
   padding-left: 15px;
 }
 
-.ChatRoom {
-    border: 1px solid;
-    margin: 5px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 5px;
-    display: block;
-    width: 550px;
-    vertical-align: top;
-}
 
-.ChatRoom .panel-heading {
-    padding: 3px;
-}
-
-.ChatRoom .panel-title {
-    padding-left: 5px;
-}
-
-.ChatRoom .panel-title a {
-    border-bottom-color: white;
-}
-
-.ChatRoom .panel-title a:hover {
-    border-bottom-color: white;
-    color: #bce8f1;
-}
 
 .Msg {
   padding-top: 3px !important;
   padding-bottom: 3px !important;
 }
 
-.SendMsgForm .form-group {
-   width: 88%;
-}
 
 button.Event {
     margin: 0px;
@@ -174,9 +228,6 @@ div#login-div {
    margin-right: auto;
 }
 
-form#send-msg-form {
-  margin-top: 5px;
-}
 
 div.event {
    border: 1px solid black;
@@ -235,10 +286,6 @@ div.name {
     margin: 2px 5px 2px 5px;
 }
 
-.SendMsgForm input[type="text"] {
-    width: 100%;
-    height: 30px;
-}
  
 .editable-click {
     cursor: pointer

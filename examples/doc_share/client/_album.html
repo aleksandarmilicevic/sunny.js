@@ -1,19 +1,19 @@
 <template name="_album">
-<div class="ChatRoom panel panel-primary">
+<div class="Album panel panel-primary">
    <div class="panel-heading">
       <div class="panel-title">
-        <a {{editableField obj=this.album fld="name"}}>{{album.title}}</a>
         <div class="pull-right">
-          <span>
-            owner: {{album.owner.name}}
-          </span>
           <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
                 {{sunny_trigger event="Destroy" obj=this.album}}>
           </span>
         </div>
+        <h4><a {{editableField obj=this.album fld="name"}} style="color:inherit;">{{album.title}}</a></h4>
+        <h6>
+            By: {{album.owner.name}}
+        </h6>
       </div>
       <div {{AddPhoto album=this.album}} 
-        class="SendMsgForm form-inline" 
+        class="SendMsgForm form-inline addPhotoForm" 
         onkeypress="return event.keyCode != 13;">
           <div class="form-group">
             <input type="text" name="photoTitle" 
@@ -25,24 +25,23 @@
           </div>
           <button class="btn btn-default SendMsg" 
                  {{sunny_trigger}}>
-           Add
+           Add Photo
           </button>
     </div>
    <br>
    <br>
-      <ul class="list-group photo-list">
         {{#each album.photos}}
-           <li class="list-group-item">
-            <img src="{{getlink}}">
-             <span class="" {{editableField obj=this fld="link"}}>Click to edit link</span>
-             <span class="" {{editableField obj=this fld="title"}}>{{gettitle}}</span>
-             <span class="pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
-                {{sunny_trigger event="Destroy" obj=this}}>
-             </span>
-           </li>
+           <div class="inlineb photo-thumbnail">
+           <span class="photo-exit pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+              {{sunny_trigger event="Destroy" obj=this}}>
+           </span>
+            <img class="photo-image" src="{{getlink}}">
+            <br>
+            <div class="photo-title" ><div {{editableField obj=this fld="title"}}>{{gettitle}}</div></div>
+            <div class="photo-linkedit" ><div {{editableField obj=this fld="link"}}>Click to edit link</div></div>
+           </div>
          {{/each}}
         
-      </ul>
       
    </div>
 
