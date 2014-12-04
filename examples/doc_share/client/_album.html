@@ -31,15 +31,42 @@
    <br>
    <br>
         {{#each album.photos}}
-           <div class="inlineb photo-thumbnail">
-           <span class="photo-exit pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+          <div class="inlineb photo-thumbnail">
+            <span class="photo-exit pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
               {{sunny_trigger event="Destroy" obj=this}}>
-           </span>
+            </span>
             <img class="photo-image" src="{{getlink}}">
             <br>
             <div class="photo-title" ><div {{editableField obj=this fld="title"}}>{{gettitle}}</div></div>
             <div class="photo-linkedit" ><div {{editableField obj=this fld="link"}}>Click to edit link</div></div>
+            <div class="inlineb phototagcontainer">
+            Tags:
+              {{#each this.tags}}
+               <div class="inlineb phototag">
+                 {{this}}
+               </div>
+               {{/each}}
+             </div>
+
+            <div {{AddTag photo=this}} class="AddTagForm form-inline" 
+            onkeypress="return event.keyCode != 13;">
+              <div class="form-group">
+                <input type="text" name="tag" 
+                        placeholder="Enter Tag"
+                        {{AddTag_tag}}/>
+              </div>
+              <button class="btn btn-default SendMsg" 
+                     {{sunny_trigger}}>
+               Add Tag
+              </button>
+            </div>
+
            </div>
+           
+
+            
+
+
          {{/each}}
         
       

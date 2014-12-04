@@ -21,6 +21,7 @@ record class Photo
   title: Text
   link: Text
   time: Val
+  tags: compose set Text
   getlink: () ->
     if not this.link
       return "Add Link"
@@ -86,11 +87,24 @@ event class AddPhoto extends ClientEvent
     this.album.photos.push(photo) 
     return photo
 
+event class AddTag extends ClientEvent
+  params:
+    photo: Photo
+    tag: Text
+
+  requires: () ->
+    return "must log in first!" if not this.client?.user
+    return "no photo specified" unless this.photo
+    
+  ensures: () ->
+    this.photo.tags.push(this.tag) 
+    return this.photo
+
 
 event class CreateAlbum extends ClientEvent
   params:
     albumTitle: Text
-
+  
   requires: () ->
     return "must log in first" if not this.client?.user
     
