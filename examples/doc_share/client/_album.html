@@ -45,6 +45,9 @@
                <div class="inlineb phototag">
                  {{this}}
                </div>
+               <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+                {{sunny_trigger event="RemoveTag" tag=this photo=..}}>
+                </span>
                {{/each}}
              </div>
 
