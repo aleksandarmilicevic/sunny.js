@@ -96,6 +96,17 @@ record class Album
     else
       return this.name
 
+  __static__: {
+    getUserAlbumsById: (userid) -> 
+      return [] unless user
+      useralbums = []
+      albums = Album.all()
+      for album in albums
+        if album.owner.id() is userid
+          useralbums.push album
+      return useralbums
+  }
+
         
 # ============================ MACHINES ======================================
 

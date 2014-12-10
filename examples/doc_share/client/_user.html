@@ -46,7 +46,10 @@
       <h4>as: 
       <a {{editableField obj=this.relation fld="relation_type"}} style="color:inherit;">{{this.relation.relation_type}}</a>
       </h4>
-      <button style="margin-top: 5px;">View Album</button>
+      <div style="margin-top: 5px; width: 225px;">
+        <button class="view-user-album" onclick="viewUserAlbum('{{this.user.id}}')">View Album</button>
+      </div>
+      
     </div>
 </template>
 

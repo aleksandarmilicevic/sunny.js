@@ -33,7 +33,9 @@ Template.other_users.helpers
   ifNotCurrentUser: ->
   	return this._mUser._id isnt Meteor.user()._id	
 
+
 Array::containsByIdFxn = (obj) ->
 	for item in this
         return true if item.id() == obj.id()
     false
+

@@ -137,7 +137,13 @@
     display: inline-block;
 }
 
-
+.modal{
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+#album-modal{
+    width: 950px;
+}
 .frame {
   border: 1px solid #dddddd;
 }
