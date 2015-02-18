@@ -42,25 +42,24 @@
   </div>
   <div class="inlineb" style="width:100%;">
     <div class="inlineb album-main top">
-    <h3>My Albums</h3>
-      <div>
+    <h3 class="inlineb albumHeader">My Albums</h3>
+      <div class="inlineb">
         <button class="btn create-button" {{sunny_trigger event="CreateAlbum"  }}>
         Create Album
       </button>
       </div>
       
-      <div id="chatroom-container" class="inlineb">
+      <div id="album-container" class="inlineb">
         {{> irc}}
       </div>
     </div>
     
     <div id="online-users" class="inlineb top" >
-      <h3>My Friends</h3>
-      {{> online_users}}
-    </div>
-    <div>
-      <button id="view-data-model">See Data Models</button>
-      <a href="/data">Data</a>
+      {{> friend_users}}
+      <br>
+      {{> requests_users}}
+      <br>
+      {{> other_users}}
     </div>
   </div>
 </template>

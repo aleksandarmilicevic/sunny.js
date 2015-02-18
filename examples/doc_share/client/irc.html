@@ -2,6 +2,29 @@
 {{#each Album}}
   {{> _album album=this}}
 {{/each}}
+
+<div class="modal fade" id="album-modal" tabindex="-1" role="dialog" >
+  <div class="modal-dialog" style="width: inherit;">
+    <div class="modal-content" id="album-modal-content" style="width: inherit;">
+    </div>
+    <div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+  </div>
+  </div>
+</div>
+<script type="text/javascript">
+	var viewUserAlbum;
+	$(document).ready(function() {
+	  viewUserAlbum = function(userid) {
+	  	$('#album-modal-content')[0].innerHTML='';
+	  	var albums = Album.getUserAlbumsById(userid);
+	  	for (var i = 0; i &lt; albums.length; i++) {
+	  		UI.insert(UI.renderWithData(Template._album, {album: albums[i]}), $('#album-modal-content')[0])
+	  	};
+	    $('#album-modal').modal('show');
+	  };
+	});
+</script>
 </template>
 
 
