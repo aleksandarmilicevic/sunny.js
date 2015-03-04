@@ -118,14 +118,14 @@ policy User,
   update:
     "*": (user, val) -> return this.deny("can't edit other users' data")
 
-#policy Team,
-#  _precondition: (team) -> not team.administrator?.equals(this.client?.user)
-#
-#  read:
-#    "! name, administrator, members": -> return this.deny("can't read team's private data")
-#
-#  update:
-#    "*": (team, val) -> return this.deny("can't edit non-administered team's data")
+policy Team,
+ _precondition: (team) -> not team.administrator?.equals(this.client?.user)
+
+ read:
+   "! name, administrator, members": -> return this.deny("can't read team's private data")
+
+ update:
+   "*": (team, val) -> return this.deny("can't edit non-administered team's data")
 
 #policy CompetitionEntry,
 #  _precondition: (competition_entry) -> not competition_entry.team?.administrator?.equals(this.client?.user)
