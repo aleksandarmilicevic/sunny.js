@@ -1,0 +1,33 @@
+<template name="_competition_entry">
+
+<div class="CompetitionEntry panel panel-primary">
+
+   <div class="panel-heading">
+      <div class="panel-title">
+        Competition Entry: <a {{editableField obj=this.competition_entry fld="name"}}>{{competition_entry.name}}</a> (team: {{competition_entry.team.name}})	
+        <div class="pull-right">
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+                {{sunny_trigger event="Destroy" obj=this.competition_entry}}>
+          </span>
+        </div>
+      </div>
+   </div>
+
+   <div class="row">
+
+     <div class="col-md-8">
+       <div class="sec-title">participants</div>
+       <ul class="list-group">
+         {{#each competition_entry.participants}}
+           <li class="User list-group-item">
+             <b><span class="sender">{{this.name}}</span></b>
+           </li>
+         {{/each}}
+       </ul>
+     </div>
+
+   </div>
+
+</div>
+
+</template>

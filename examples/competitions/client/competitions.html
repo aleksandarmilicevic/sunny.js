@@ -1,0 +1,11 @@
+<template name="competitions">
+
+{{#each Server.teams}}
+  {{> _team team=this}}
+{{/each}}
+
+{{#each Server.competition_entries}}
+  {{> _competition_entry competition_entry=this}}
+{{/each}}
+
+</template>
