@@ -150,17 +150,21 @@ getSunnyClient = (conn) ->
   else
     Sunny.Meta.clientKls().findOne({"_mConn.id": conn})
 
+onBehalf = (fn, clnt) ->
+  old = Sunny._currClient.get()
+  try
+    Sunny._currClient.set(clnt)
+    fn.apply(null)
+  finally
+    Sunny._currClient.set(old)
+
 onClientBehalf = (conn, fn) ->
   if not conn
     return fn.apply(null)
   else
-    old = Sunny._currClient.get()
-    try
-      clnt = getSunnyClient(conn)
-      Sunny._currClient.set(clnt)
-      fn.apply(null)
-    finally
-      Sunny._currClient.set(old)
+    return onBehalf(fn, getSunnyClient(conn))
+
+onServerBehalf = (fn) -> onBehalf(fn, null)
 
 fixKlsParent = (kls, parent) ->
   console.log "class #{kls.name} < #{parent?.name}"
@@ -1655,13 +1659,22 @@ Sunny._CRUD = do ->
 
   create: (sig, props) ->
     sig = Sunny.Utils.toSig(sig)
-    pps = {}
-    pps._id = props._id if props?._id
-    obj = sig.new(pps)
-    obj._setProp "_id", obj.meta().repr().insert(obj.__props__)
-    obj[pn] = pv for pn, pv of props
-    obj
-
+    check = Sunny.ACL.check_create(sig)
+    if check.isAllowed()
+      pps = {}
+      pps._id = props._id if props?._id
+      obj = sig.new(pps)
+      obj._setProp "_id", obj.meta().repr().insert(obj.__props__)
+      onServerBehalf () ->
+        obj[pn] = pv for pn, pv of props
+      return obj
+    else
+      Sunny.ACL.signalAccessDenied
+        type:    "create"
+        sigName: sig.__meta__.name
+        msg:     check.denyReason
+      return null
+  
   delete: (obj) ->
     for fld in obj.meta().allFields()
       if fld.type?.isComposition() && not fld.type.isPrimitive()
