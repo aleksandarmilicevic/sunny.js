@@ -127,11 +127,11 @@ policy Team,
  update:
    "*": (team, val) -> return this.deny("can't edit non-administered team's data")
 
-#policy CompetitionEntry,
-#  _precondition: (competition_entry) -> not competition_entry.team?.administrator?.equals(this.client?.user)
-#
-#  update:
-#    "*": (competition_entry, val) -> return this.deny("can't edit non-administered competition entry's data")
+policy CompetitionEntry,
+  _precondition: (competition_entry) -> not competition_entry.team?.administrator?.equals(this.client?.user)
+
+  update:
+    "*": (competition_entry, val) -> return this.deny("can't edit non-administered competition entry's data")
 
 ### STDLIB ###
 
