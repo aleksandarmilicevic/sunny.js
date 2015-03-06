@@ -34,6 +34,14 @@ if Meteor.isClient
       if e.keyCode == 13
         triggerEvent($(this))
         $(this).val("")
+
+    Router.route("sunny-database", { path : '/database' });
+    Template.Spreadsheet.rendered = ->
+      sheet = @data?.sheet || ''
+      viewId = @data?.viewId
+      Tablespace.default = Tablespace.get sheet
+      Meteor.call 'open', $$
+      Tracker.autorun(guarded -> rebuildView viewId)
   
   triggerEvent = ($elem) ->
     $closestEventBlock = null

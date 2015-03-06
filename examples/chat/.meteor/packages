@@ -9,3 +9,4 @@ accounts-base
 bootstrap
 coffeescript
 accounts-ui
+iron-router
