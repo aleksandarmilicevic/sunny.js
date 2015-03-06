@@ -6,5 +6,5 @@ Package.describe({
 
 Package.onUse(function (api) {
   api.addFiles('callingcontext.js')
-  api.export('CallingContext', 'server');
+  api.export('CallingContext', ['client','server']);
 });

@@ -16,15 +16,6 @@ andThen = (cont) ->
 # like, it just won't have a stack trace.
 class NotReadyError
 
-# Router.route "/", -> @render "Spreadsheet"  # @deprecated (should show list of avail sheets)
-
-# Router.route "/:sheet", ->
-#   @render "Spreadsheet", data: {sheet: @params.sheet}
-# Router.route "/:sheet/views/:_id", ->
-#   @render "Spreadsheet", data: {sheet: @params.sheet, viewId: @params._id}
-# Router.route "/:sheet/schema", ->
-#   @render "Schema", data: {sheet: @param.sheet}
-
 # Grid utilities
 
 class ViewCell
@@ -842,7 +833,12 @@ guarded = (op) ->
         return  # Let the autorun run again once we have the data.
       throw e
 
-
+Template.Spreadsheet.rendered = ->
+      sheet = @data?.sheet || ''
+      viewId = @data?.viewId
+      Tablespace.default = Tablespace.get sheet
+      Meteor.call 'open', $$
+      Tracker.autorun(guarded -> rebuildView viewId)
 
 
 

@@ -35,14 +35,15 @@ if Meteor.isClient
         triggerEvent($(this))
         $(this).val("")
 
-    Router.route("sunny-database", { path : '/database' });
-    Template.Spreadsheet.rendered = ->
-      sheet = @data?.sheet || ''
-      viewId = @data?.viewId
-      Tablespace.default = Tablespace.get sheet
-      Meteor.call 'open', $$
-      Tracker.autorun(guarded -> rebuildView viewId)
-  
+    Router.route("sunnyDatabase", { path : '/EJdatabase' });
+    Router.route "/database", -> @render "Spreadsheet"  # @deprecated (should show list of avail sheets)
+    Router.route "/database/:sheet", ->
+      @render "Spreadsheet", data: {sheet: @params.sheet}
+    Router.route "/database/:sheet/views/:_id", ->
+      @render "Spreadsheet", data: {sheet: @params.sheet, viewId: @params._id}
+    Router.route "/database/:sheet/schema", ->
+      @render "Schema", data: {sheet: @param.sheet}
+    
   triggerEvent = ($elem) ->
     $closestEventBlock = null
     evKlsName = $elem.attr("sunny-trigger")
