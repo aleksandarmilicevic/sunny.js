@@ -1,0 +1,54 @@
+<template name="friend_users">
+  <div class="inlineb online-users">
+    <h3>My Network</h3>
+    <ul class="networkTreeOuter">
+    {{#each Client.user.network.groupByRange}}
+      <li>
+        <div class="friendUserDiv">{{> _user user=this.key status=true avatar=true}}</div>
+        <span class="editRelBtn glyphicon glyphicon-edit"></span>
+        <span class="removeRelBtn glyphicon glyphicon-remove"></span>
+      </li>
+    {{/each}}
+
+    </ul>
+  </div>
+</template>
+
+
+<template name="friend_groups">
+  <div class="inlineb online-users">
+    <h3>My Network</h3>
+    <ul class="networkTreeOuter">
+    {{#each Client.user.network.groupByDomain}}
+      <li class="outer">{{key}}</li>
+      <ul>
+        {{#each value}}
+        <li class="inner">
+          <div class="friendUserDiv">{{> _user user=this.last status=true avatar=true}}</div>
+          <span class="editRelBtn glyphicon glyphicon-plus"
+                {{AddToMyNetwork kind=_prompt_ user=this.last}}
+                {{sunny_trigger}}
+                ></span>
+          <span class="removeRelBtn glyphicon glyphicon-remove"
+                {{RemoveMyRel kind=../key user=this.last}}
+                {{sunny_trigger}}></span>
+        </li>
+        {{/each}}
+      </ul>
+    {{/each}}
+    </ul>
+  </div>
+</template>
+
+<template name="other_users">
+  <div class="inlineb online-users">
+  	<h3>All Other Users</h3>
+    {{#each User}}
+       {{#if isNotInMyNetwork this}}
+         <div {{AddToMyNetwork user=this kind="other"}} {{sunny_trigger}} class="addToNetwork">
+           {{> _user user=this avatar=true}}
+         </div>
+       {{/if}}
+    {{/each}}
+  </div>
+</template>

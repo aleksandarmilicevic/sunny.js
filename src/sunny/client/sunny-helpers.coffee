@@ -12,6 +12,7 @@ if Meteor.isClient
       obj = kw.hash.obj
       fldName = kw.hash.fld
       return {} unless obj
+      return {} unless Sunny.ACL.check_update(obj, fldName, null).isAllowed()
       "sunny-editable-fld" : true
       "sunny-sig"          : obj.type()
       "sunny-atom-id"      : obj.id()
@@ -37,6 +38,8 @@ if Meteor.isClient
         return {}
 
     UI.registerHelper "dbg", (x) -> console.log x
+
+    UI.registerHelper "_prompt_", () -> "$<prompt('')>"
 
     _eventMeta = (kw) ->    
       return {} unless kw?.hash

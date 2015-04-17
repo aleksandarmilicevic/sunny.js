@@ -237,6 +237,28 @@ toMeteorRef = (obj) ->
   else
     obj
 
+
+_equalsFn = (obj) ->
+  eqFn = (e) -> obj == e
+  if obj && Sunny.Types.isSigKls(obj.constructor) # && not this._myFld.type.isPrimitive() &&
+    eqFn = (e) -> obj.equals(e)
+  if obj instanceof Array
+    eqFn = (arr) ->
+      return false unless arr instanceof Array
+      return false unless arr.length == obj.length
+      idx = 0
+      for e in obj
+        return false unless _equalsFn(e)(arr[idx])
+        idx = idx + 1
+      return true        
+  return eqFn
+
+_objToArray = (obj) ->
+  ans = []
+  for p, v of obj
+    ans.push {key: p, value: v}
+  return ans
+
 _cleanupClient = (client, connId) ->
   connId ?= client?._mConn?.id
   for sig in Sunny.Meta.recordsAndMachines
@@ -589,6 +611,21 @@ Sunny.Types = do ->
   class Klass
     constructor: (@name, @primitive, @constrFn, @defaultValue) ->
 
+    getConstrFn: () ->
+      this.__tryResolve() if @primitive == undefined
+      return @constrFn
+
+    getDefaultValue: () ->
+      this.__tryResolve() if @primitive == undefined
+      return @defaultValue
+
+    __tryResolve: () ->
+        sig = Sunny.Meta.findSig(@name)
+        if sig
+          @primitive = false
+          @constrFn = sig.__meta__.klass.constrFn
+          @defaultValue = sig.__meta__.klass.defaultValue
+
   class Enum extends Klass
     constructor: (name, valuesArr) ->
       super(name, true, null, valuesArr[0])
@@ -612,12 +649,14 @@ Sunny.Types = do ->
   class Type
     constructor: (@mult, @klasses, @refKind) ->
 
-    isScalar:      () -> @mult == "one" || @mult == "lone" || not @mult
-    isUnary:       () -> @klasses.length == 1
-    isComposition: () -> @refKind == "composition"
-    isAggregation: () -> @refKind == "aggregation"
-    isPrimitive:   () -> this.isUnary() && @klasses[0].primitive
-    isReference:   () -> not this.isPrimitive()
+    isScalar:      ()  -> @mult == "one" || @mult == "lone" || not @mult
+    isUnary:       ()  -> @klasses.length == 1
+    arity:         ()  -> @klasses.length
+    columnKlass:   (i) -> @klasses[i]
+    isComposition: ()  -> @refKind == "composition"
+    isAggregation: ()  -> @refKind == "aggregation"
+    isPrimitive:   ()  -> this.isUnary() && @klasses[0].primitive
+    isReference:   ()  -> not this.isPrimitive()
 
     defaultValue: () ->
       if not this.isScalar()
@@ -628,10 +667,10 @@ Sunny.Types = do ->
         return @klasses[0].defaultValue
 
     domain: () ->
-      return this.klasses[0].constrFn
+      return this.klasses[0].getConstrFn()
 
     range: () ->
-      return this.klasses[this.klasses.length - 1].constrFn
+      return this.klasses[this.klasses.length - 1].getConstrFn()
 
   __exports__ : ["Int", "Bool", "Real", "DateTime", "Text", "Klass", "Type", "Obj", "Val", "Enum", "enums",
                  "one", "set", "compose", "owns"]
@@ -665,6 +704,9 @@ Sunny.Types = do ->
                        return new Type("lone", [new Klass(x)])
                      else if Sunny.Types.isKlass(x)
                        return new Type("lone", [x.__meta__.klass])
+                     else if x instanceof Array
+                       colKlasses = map x, (e) -> Sunny.Types.asType(e).klasses[0]
+                       return new Type("set", colKlasses)
                      else
                        return null
   set       : (t) -> return setTypeProperty(t, "mult", "set")
@@ -697,6 +739,8 @@ convertObj = (sunnyCls, obj) ->
     obj = null if obj.isGhost()
   return obj
 
+# takes an array of raw (JSON) objects (as stored in Mongo DB)
+# and converts them to Sunny records
 convertMeteorArray = (sunnyCls, arr, elemMapFn) ->
   mapFn = elemMapFn || convertMeteorObj
   ans = []
@@ -712,23 +756,53 @@ convertMeteorArray = (sunnyCls, arr, elemMapFn) ->
   return result: ans, dangling: dangling
 
 wrap = (obj, fld, val) ->
-  throw("don't know how to wrap non-unary type: #{fld.type}") unless fld.type.isUnary()
-  if fld.type.isScalar()
-    if fld.type.isPrimitive()
-      return val
-    else
-      return convertObj(fld.type.domain(), val)
+  if not fld.type.isUnary()
+    #   msg = "don't know how to wrap non-unary type: #{fld.type}"
+    #   sdebug msg
+    #   throw(msg)
+    # ------------------------------
+    #  higher arity
+    # ------------------------------
+    val = [] unless val
+    ans = []
+    for tuple in val
+      unless tuple instanceof Array
+        msg = "value not array of arrays for field #{fld} of arity #{fld.type.arity}"
+        sdebug(msg); throw(msg)
+      unless tuple.length == fld.type.arity()
+        msg = "arity mismatch on field #{fld}: arity=#{fld.type.arity}, tuple length=#{tuple.length}"
+        sdebug msg; throw(msg)
+      idx = -1
+      convTuple = []
+      for e in tuple
+        idx = idx + 1
+        kls = fld.type.columnKlass(idx)
+        sunnyCls = kls.getConstrFn()
+        convTuple.push convertObj(sunnyCls, e)
+      ans.push createSunnyArray(null, fld, convTuple)
+    return createSunnyArray(obj, fld, ans)
   else
-    if not val
-      val = []
-      # obj.writeField(fld.name, val)
-    throw("field #{fld.name} in #{obj} has no type") unless fld.type
-    throw("field #{fld.name} in #{obj} is not unary") unless fld.type.isUnary()
-    ans = convertMeteorArray(fld.type.domain(), val, convertObj)
-    sa = createSunnyArray(obj, fld, ans.result)
-    # for d in ans.dangling
-    #   sa._updateMongo("$pull", d.elem)
-    return sa
+    if fld.type.isScalar()
+      # ------------------------------
+      # unary scalar
+      # ------------------------------        
+      if fld.type.isPrimitive()
+        return val
+      else
+        return convertObj(fld.type.domain(), val)
+    else
+      # ------------------------------
+      # unary array
+      # ------------------------------    
+      val = [] unless val
+        # obj.writeField(fld.name, val)
+      throw("field #{fld.name} in #{obj} has no type") unless fld.type
+      throw("field #{fld.name} in #{obj} is not unary") unless fld.type.isUnary()
+      ans = convertMeteorArray(fld.type.domain(), val, convertObj)
+      sa = createSunnyArray(obj, fld, ans.result)
+      # for d in ans.dangling
+      #   sa._updateMongo("$pull", d.elem)
+      return sa
 
 createSunnyArray = (sunnyOwnerObj, sunnyFld, array) ->
   ans = array || []
@@ -963,7 +1037,7 @@ Sunny.Model = do ->
 
     # ------------------------------------------------------------------------
     # @return string
-    type: () -> this.__props__._sunny_type
+    type: () -> this.__props__?._sunny_type
 
     # ------------------------------------------------------------------------
     # Check if the object still exists in the DB.
@@ -1321,13 +1395,6 @@ Sunny.Model = do ->
       )
       return this
 
-    _equalsFn: (obj) ->
-      eqFn = (e) -> obj == e
-      if not this.__sunny__.field.type.isPrimitive() &&
-         obj && typeof(obj.id) == "function"
-        eqFn = (e) -> typeof(e.id) == "function" and e.id() == obj.id()
-      return eqFn
-
     push: (e) ->
       obj = this._myOwner()
       fname = this._myFldName()
@@ -1344,7 +1411,7 @@ Sunny.Model = do ->
     #     obj._setProp fname, this
 
     remove: (elem) ->
-      idx = findIndex this, this._equalsFn(elem)
+      idx = findIndex this, _equalsFn(elem)
       if idx != -1
         obj = this._myOwner()
         fname = this._myFldName()
@@ -1356,7 +1423,7 @@ Sunny.Model = do ->
       return idx
 
     contains: (obj) ->
-      return this.findIndex(this._equalsFn(obj)) != -1
+      return this.findIndex(_equalsFn(obj)) != -1
 
     containsAll: (arr) ->
       for obj in arr
@@ -1372,6 +1439,23 @@ Sunny.Model = do ->
       for elem in this
         return true if fn(elem)
       return false
+
+    first: () -> this[0]
+    last:  () -> this[this.length-1]
+
+    groupByKey: (key) ->
+      ans = []
+      for elem in this
+        k = elem[key]
+        e = findFirst ans, (e) -> _equalsFn(e.key)(k)
+        if not e
+          e = {key: k, value: []}
+          ans.push e
+        e.value.push(elem)
+      return ans
+
+    groupByDomain: () -> this.groupByKey(0)
+    groupByRange: () -> this.groupByKey(1)
 
   Sig           : Sig
   Record        : Record

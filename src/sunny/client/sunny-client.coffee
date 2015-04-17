@@ -57,9 +57,10 @@ if Meteor.isClient
         if pName.indexOf(pfix) == 0
           pName = pName.substring(pfix.length)
           setEventParam(ev, pName, $(this).val(), $(this))
-  
-    iterParamAttributes $elem.get(0).attributes, (an, av) ->
-      setEventParam(ev, an, av, $elem)
+
+    unless $elem.get(0) == $closestEventBlock[0]
+      iterParamAttributes $elem.get(0).attributes, (an, av) ->
+        setEventParam(ev, an, av, $elem)
   
     ev.trigger()
   
