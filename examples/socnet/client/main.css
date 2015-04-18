@@ -383,3 +383,87 @@ div.name {
     font-weight: bold;
     text-align: left
 }
+
+.user_info {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.user_status {
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 20pt;
+}
+
+.user_profile {
+    width: 74%;
+    border-radius: 10px;
+    margin: 20px;
+    padding: 20px;
+    border: 1px solid black;
+}
+
+#profile_name {
+    font-weight: bold;
+}
+
+#profile_status {
+    border: 1px solid grey;
+    border-radius: 4pt;
+    padding: 5pt;
+    margin-top: 5pt;
+}
+
+.status_label, .network_label, .wall_label {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.user_profile_bottom {
+    margin-top: 20pt;
+}
+
+.friend_kind {
+    margin-left: 2px; 
+    margin-right: 2px;
+}
+
+.friend_name {
+    
+}
+
+img.editable-click {
+    border: 0pt !important;
+}
+
+.post {
+    border: 1px solid gray;
+    border-radius: 5px;
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.post_date {
+  padding: 2px;
+  border-bottom: 1px solid gray;
+  margin-bottom: 2px;
+}
+
+.post_author {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.post_body {
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 10px;
+    border-left: 1px solid gray;
+    padding: 10px;
+}
+
+.delete_post {
+    float: right;
+    cursor: pointer;
+}

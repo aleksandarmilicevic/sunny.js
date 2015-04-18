@@ -36,22 +36,15 @@
       </div>
     </div>
     <div class="container user-buttons">
-      {{> _user user=Client.user avatar=true status=false editableName=true}}
+      <span {{SelectUser user=Client.user}} {{sunny_trigger}} >
+        {{> _user user=Client.user avatar=true status=false editableName=false}}
+      </span>
       {{> loginButtons}}
     </div>
   </div>
   <div class="inlineb" style="width:100%;">
-    <div class="inlineb album-main top">
-    <h3 class="inlineb albumHeader">My Albums</h3>
-      <div class="inlineb">
-        <button class="btn create-button" {{sunny_trigger event="CreateAlbum"  }}>
-        Create Album
-      </button>
-      </div>
-      
-      <div id="album-container" class="inlineb">
-        <!-- {{> irc}} -->
-      </div>
+    <div class="user_profile inlineb top">
+      {{> user_profile user=Client.selectedUserOrMe}}
     </div>
     
     <div id="online-users" class="inlineb top" >

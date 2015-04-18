@@ -364,6 +364,9 @@ Sunny.Log = do ->
 
   slog: (msg) -> console.log(msg)
 
+  srv_sdebug: (msg) ->
+    sdebug(msg) if Meteor.isServer
+    
   sdebug: (msg) ->
     return console.log(_indent.get("") + msg) if Meteor.isClient
     _colorFiber(msg)
@@ -1708,22 +1711,22 @@ Sunny.ACL = do ->
         if poli.length == 0
           return _defaultOutcome()
         else
-          sdebug("policies for #{op}: #{poli.length}")
+          srv_sdebug("policies for #{op}: #{poli.length}")
           currVal = op.val
           currOutcome = null
           for p in poli
-            sdebug "  checking policy on behalf of #{Sunny.currClient()}"
+            srv_sdebug "  checking policy on behalf of #{Sunny.currClient()}"
             op.val = currVal
             outcome = p.check(op)
             if outcome.isDenied()
-              sdebug "  -> denied"
+              srv_sdebug "  -> denied"
               return outcome # denied; return
             else if outcome.isAllowed()
               msg = "  -> allowed";
               if outcome.hasValue()
                 msg = msg + " (restricted)"
                 msg += ": #{outcome.value.length}" if outcome.value instanceof Array
-              sdebug msg
+              srv_sdebug msg
               currVal = outcome.value if outcome.hasValue()
               currOutcome = outcome if outcome.hasValue() or not currOutcome
           if currOutcome # allowed
@@ -2096,6 +2099,9 @@ Meteor.startup () ->
 #   Initializations
 # ====================================================================================
 
+Sunny._currClient = new Sunny.Utils.FiberLocalVar("Sunny.currClient")
+Sunny._currConnId = new Sunny.Utils.FiberLocalVar("Sunny.currConnId")
+
 # ----------------------------------------------------------
 # Client initialization
 # ----------------------------------------------------------
@@ -2117,9 +2123,6 @@ if Meteor.isClient
 # Server initialization
 # ----------------------------------------------------------
 if Meteor.isServer
-  Sunny._currClient = new Sunny.Utils.FiberLocalVar("Sunny.currClient")
-  Sunny._currConnId = new Sunny.Utils.FiberLocalVar("Sunny.currConnId")
-
   # delete all Client and Server records and create a single
   # Server record for the currently running server
   Meteor.startup () ->

@@ -6,44 +6,46 @@ simport Sunny.Types
 
 user class User
   status: Text
+  avatar: Text
   location: Text
   network: [Text, "User"]
   wall: set "Post"
 
+  avatarLink: () -> this.avatar || "https://www.gnu.org/graphics/heckert_gnu.small.png"
   statusText: () -> this.status || "<statusless>"
 
   addRelationship: (kind, user) ->
     this.network.push [kind, user]    
-    # rel = findFirst this.network, (r) -> r.kind = kind
-    # if not rel
-    #   rel = Relationship.create({kind: kind, users: []})
-    #   this.network.push(rel)
-    # rel.users.push(user)
 
-  # networkGroupedByKind: () ->
-  #   grp = {}
-  #   kinds = []
-  #   for r in this.network
-  #     if not grp[r.kind]
-  #       grp[r.kind] = []
-  #       kinds.push(r.kind)
-  #     grp[r.kind].push(r)
-  #   ans = []
-  #   for k in kinds
-  #     ans.push {kind: k, rels: grp[k]}
-  #   return ans
+record class Chunk
+  isText:    () -> false
+  isHashTag: () -> false
+  isUserTag: () -> false
 
-  
+record class TextChunk extends Chunk
+  text: Text
+  isText: () -> true
 
-record class Relationship
-  kind: Text
-  users: set User
+record class HashTagChunk extends Chunk
+  tag: Text
+  isHashTag: () -> true
+
+record class UserTagChunk extends Chunk
+  user: User
+  isUserTag: () -> true
 
 record class Post
   text: Text
   author: User
-  tags: set Text
+  body: compose set Chunk
   time: Val
+
+  timeFormatted: () ->
+    options = {
+        weekday: "long", year: "numeric", month: "short",
+        day: "numeric", hour: "2-digit", minute: "2-digit"
+    }
+    this.time.toLocaleTimeString("en-us", options)
 
         
 # ============================ MACHINES ======================================
@@ -51,6 +53,9 @@ record class Post
 
 client class Client
   user: User
+  selectedUser: User
+
+  selectedUserOrMe: () -> this.selectedUser || this.user
 
 server (class Server)
 
@@ -91,18 +96,70 @@ event class RemoveMyRel extends ClientEvent
   ensures: () ->
     me = this.client.user
     me.network.remove([this.kind, this.user])
-        
+
+event class SelectUser extends ClientEvent
+  params:
+    user: User
+  
+  requires: () ->
+    return "must log in first!" unless this.client?.user
+    return "must specify user" unless this.user
+
+  ensures: () ->
+    this.client.selectedUser = this.user
+
+event class PostEvent extends ClientEvent
+  params:
+    to: User
+    text: Text
+
+  requires: () ->
+    return "must log in first!" unless this.client?.user
+    return "must specify user" unless this.to
+    return "must specify text" unless this.text
+
+  ensures: () ->
+    body = []
+    pos = 0
+    re = /#\w+|@\w+/gm
+    match = re.exec(this.text)
+    while match
+      if match.index > pos
+        body.push TextChunk.create(text: this.text.substring(pos, match.index))
+      tag = match[0]
+      if tag.charAt(0) == '#'
+        body.push HashTagChunk.create(tag: tag)
+      else
+        u = User.findOne({name: tag.substring(1)})
+        if u
+          body.push UserTagChunk.create({user: u})
+        else
+          body.push TextChunk.create({text: tag})            
+      pos = match.index + tag.length
+      match = re.exec(this.text)
+    if this.text.length > pos
+      body.push TextChunk.create(text: this.text.substring(pos))
+
+    p = Post.create({
+          author: this.client.user,
+          text: this.text,
+          body: body,
+          time: new Date()
+        })
+    this.to.wall.push(p)
+
+
 # ============================ POLICIES ======================================
 
 
-# policy User,
-#   _precondition: (user) -> not user.equals(this.client?.user)
+policy User,
+  _precondition: (user) -> not user.equals(this.client?.user)
 
-#   read:
-#     "! name, status": -> return this.deny("can't read User's private data")
+  read:
+    "password": -> return this.deny("can't read User's private data")
     
-#   update:
-#     "*": (user, val) -> return this.deny("can't edit other people's data")
+  update:
+    "! wall": (user, val) -> return this.deny("can't edit other people's data")
 
 # policy Client,
 #   _precondition: (clnt) -> not clnt.equals(this.client)

@@ -24,7 +24,9 @@
       <ul>
         {{#each value}}
         <li class="inner">
-          <div class="friendUserDiv">{{> _user user=this.last status=true avatar=true}}</div>
+          <div class="friendUserDiv" {{SelectUser user=this.last}} {{sunny_trigger}}>
+            {{> _user user=this.last status=true avatar=true}}
+          </div>
           <span class="editRelBtn glyphicon glyphicon-plus"
                 {{AddToMyNetwork kind=_prompt_ user=this.last}}
                 {{sunny_trigger}}
@@ -45,7 +47,7 @@
   	<h3>All Other Users</h3>
     {{#each User}}
        {{#if isNotInMyNetwork this}}
-         <div {{AddToMyNetwork user=this kind="other"}} {{sunny_trigger}} class="addToNetwork">
+         <div {{AddToMyNetwork user=this kind=_prompt_}} {{sunny_trigger}} class="addToNetwork">
            {{> _user user=this avatar=true}}
          </div>
        {{/if}}
