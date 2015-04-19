@@ -14,7 +14,7 @@
 <!-- <script src="//netdna.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.js"></script> -->
 <!-- <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.js"></script> -->
 
-  <title>Sunny Album Share</title>
+  <title>Sunny SocNet</title>
 
 </head>
 
@@ -31,7 +31,7 @@
       <div id="app-title" class="navbar-header attach-left">
         <a id="brand" href="#">
           <img src="/images/sunny-48.png" width="48px"/> 
-          Sunny Album
+          Sunny SocNet
         </a>
       </div>
     </div>
@@ -48,11 +48,7 @@
     <span id="acl-denied"></span>
   </div>
 
-  <div class="inlineb" style="width:100%;">
-    <div class="user_profile inlineb top">
-      {{> user_profile user=Client.selectedUserOrMe}}
-    </div>
-    
+  <div class="">
     <div id="online-users" class="inlineb top" >
       <!-- {{> friend_users}}  -->
       {{> friend_groups}}
@@ -61,6 +57,12 @@
       <br>
       {{> other_users}}
     </div>
+
+    <div class="user_profile inlineb top">
+      {{> user_profile user=Client.selectedUserOrMe}}
+    </div>
+    
+
   </div>
 <!-- </template> -->
   

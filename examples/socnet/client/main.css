@@ -14,12 +14,12 @@
     background-color: #8db9df;
 }
 #online-users{
-    width: 20%;
+    width: 300px;
+    margin-left: 20px;
     border-radius: 10px;
-    margin: 10px;
-    margin-top: 20px;
-    background-color: #f9f381;
-    text-align: center;
+    border: 1px solid black;
+    text-align: left;
+    padding: 10px;
 }
 .create-button{
     display: block;
@@ -162,6 +162,10 @@
   background-color: #bce8f1;
   z-index: 2;
   border-color: #9ac6c9;
+}
+
+.list-group-item.me .user-name-status {
+  width: 195px;
 }
 
 .navbar-inverse .User {
@@ -396,9 +400,8 @@ div.name {
 }
 
 .user_profile {
-    width: 74%;
+    width: 70%;
     border-radius: 10px;
-    margin: 20px;
     padding: 20px;
     border: 1px solid black;
 }

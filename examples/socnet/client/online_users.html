@@ -17,6 +17,10 @@
 
 <template name="friend_groups">
   <div class="inlineb online-users">
+    <h3>Me</h3>
+    <div class="friendUserDiv" {{SelectUser user=Client.user}} {{sunny_trigger}}>
+      {{> _user user=Client.user status=true avatar=true}}
+    </div>
     <h3>My Network</h3>
     <ul class="networkTreeOuter">
     {{#each Client.user.network.groupByDomain}}

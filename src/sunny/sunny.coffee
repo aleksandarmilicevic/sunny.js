@@ -161,6 +161,13 @@ Array.prototype.findIndex = (cb) ->
 #   private
 # ====================================================================================
 
+applyDbOp = (fnName, obj, args...) ->
+  fn = obj[fnName]
+  # if Meteor.isServer && Sunny.Queue.currInvocation()
+  #   sdebug "in invocation"
+  #   args.push {tx: true}
+  fn.apply(obj, args)
+
 getSunnyClient = (conn) ->
   if conn instanceof SunnyClient
     conn
@@ -1406,10 +1413,7 @@ Sunny.Model = do ->
       mod = {}
       mod[op] = {}
       mod[op][fld.name] = query
-      obj.meta().repr().update(
-        { _id: obj.id() },
-        mod
-      )
+      applyDbOp "update", obj.meta().repr(), { _id: obj.id() }, mod
       return this
 
     push: (e) ->
@@ -1756,7 +1760,8 @@ Sunny._CRUD = do ->
       pps = {}
       pps._id = props._id if props?._id
       obj = sig.new(pps)
-      obj._setProp "_id", obj.meta().repr().insert(obj.__props__)
+      objid = applyDbOp "insert", obj.meta().repr(), obj.__props__
+      obj._setProp "_id", objid
       onServerBehalf () ->
         obj[pn] = pv for pn, pv of props
       return obj
@@ -1777,7 +1782,7 @@ Sunny._CRUD = do ->
           for ref in refs
             if ref instanceof Sunny.Model.Record
               ref.destroy()
-      obj.meta().repr().remove(_id: obj.id())
+      applyDbOp "remove", obj.meta().repr(), {_id: obj.id()}
     else
       Sunny.ACL.signalAccessDenied
         type:    "delete"
@@ -1826,7 +1831,7 @@ Sunny._CRUD = do ->
           fldName: fname
           msg:  check.denyReason
     if okFldCnt > 0
-      obj.meta().repr().update({ _id: obj.id() }, { $set: mod })
+      applyDbOp "update", obj.meta().repr(), { _id: obj.id() }, { $set: mod }
       return true
     else
       return false
@@ -1838,7 +1843,7 @@ Sunny._CRUD = do ->
     if check.isAllowed()
       # obj._setProp fname, fvalue
       mod = {}; mod[fname] = toMeteorRef(val)
-      obj.meta().repr().update({ _id: obj.id() }, { $push: mod })
+      applyDbOp "update", obj.meta().repr(), { _id: obj.id() }, { $push: mod }
       return true
     else
       Sunny.ACL.signalAccessDenied
@@ -1855,7 +1860,7 @@ Sunny._CRUD = do ->
     if check.isAllowed()
       # obj._setProp fname, fvalue
       mod = {}; mod[fname] = toMeteorRef(val)
-      obj.meta().repr().update({ _id: obj.id() }, { $pull: mod })
+      applyDbOp "update", obj.meta().repr(), { _id: obj.id() }, { $pull: mod }
       return true
     else
       Sunny.ACL.signalAccessDenied
@@ -1928,7 +1933,9 @@ Sunny.Queue = do ->
       inv = new Invocation(op, opFn, args)
       _queue.push(inv)
       try
+        # tx.start()
         onClientBehalf connId, () -> opFn.apply(self, args)
+        # tx.commit()
       catch err
         _rootInvocation().error = err
       finally
@@ -2114,6 +2121,17 @@ Meteor.startup () ->
 
 Sunny._currClient = new Sunny.Utils.FiberLocalVar("Sunny.currClient")
 Sunny._currConnId = new Sunny.Utils.FiberLocalVar("Sunny.currConnId")
+
+# # ----------------------------------------------------------
+# # tx initialization
+# # ----------------------------------------------------------
+# Meteor.startup () ->
+#   collectionIndex = {}
+#   for name, constr of Sunny.Meta.recordsAndMachinesAndBuiltin()
+#     mongoCol = constr.__meta__.__repr__
+#     collectionIndex[mongoCol._name] = mongoCol
+#   tx.collectionIndex = collectionIndex
+#   tx.requireUser = false
 
 # ----------------------------------------------------------
 # Client initialization
