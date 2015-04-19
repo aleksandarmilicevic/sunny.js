@@ -63,6 +63,17 @@ Sunny.methods = (hash) ->
 # ====================================================================================
 
 Sunny.Fun = do ->
+  groupByKey: (arr, key) ->
+    ans = []
+    for elem in arr
+      k = elem[key]
+      e = findFirst ans, (e) -> _equalsFn(e.key)(k)
+      if not e
+        e = {key: k, value: []}
+        ans.push e
+      e.value.push(elem)
+    return ans
+    
   map: (col, cb) ->
     ans = []
     ans.push(cb(e)) for e in col
@@ -101,6 +112,9 @@ Sunny.Fun = do ->
       idx = idx + 1
     return -1
 
+  contains: (col, targetElem) ->
+    findIndex(col, _equalsFn(targetElem)) != -1
+
   filter: (col, cb) ->
     ans = []
     for e in col
@@ -131,8 +145,11 @@ Sunny.Conf = do ->
 #   standard prototype extensions
 # ====================================================================================
 
-Array.prototype.map  = (cb) -> map this, cb
-Array.prototype.find = (cb) -> findFirst this, cb
+Array.prototype.map  = (cb)             -> map this, cb
+Array.prototype.find = (cb)             -> findFirst this, cb
+Array.prototype.contains = (targetElem) -> contains this, targetElem
+Array.prototype.groupByDomain = ()      -> groupByKey(this, 0)
+Array.prototype.groupByRange = ()       -> groupByKey(this, 1) #TODO: use last index instead of 1
 Array.prototype.findIndex = (cb) ->
   idx = 0
   for e in this
@@ -760,9 +777,6 @@ convertMeteorArray = (sunnyCls, arr, elemMapFn) ->
 
 wrap = (obj, fld, val) ->
   if not fld.type.isUnary()
-    #   msg = "don't know how to wrap non-unary type: #{fld.type}"
-    #   sdebug msg
-    #   throw(msg)
     # ------------------------------
     #  higher arity
     # ------------------------------
@@ -1446,19 +1460,8 @@ Sunny.Model = do ->
     first: () -> this[0]
     last:  () -> this[this.length-1]
 
-    groupByKey: (key) ->
-      ans = []
-      for elem in this
-        k = elem[key]
-        e = findFirst ans, (e) -> _equalsFn(e.key)(k)
-        if not e
-          e = {key: k, value: []}
-          ans.push e
-        e.value.push(elem)
-      return ans
-
-    groupByDomain: () -> this.groupByKey(0)
-    groupByRange: () -> this.groupByKey(1)
+    groupByDomain: () -> groupByKey(this, 0)
+    groupByRange: () -> groupByKey(this, 1)
 
   Sig           : Sig
   Record        : Record
@@ -1728,6 +1731,8 @@ Sunny.ACL = do ->
                 msg += ": #{outcome.value.length}" if outcome.value instanceof Array
               srv_sdebug msg
               currVal = outcome.value if outcome.hasValue()
+              # if outcome.hasValue()
+              #   currVal = wrap(op.obj, op.obj.meta().field(op.fldName), outcome.value)
               currOutcome = outcome if outcome.hasValue() or not currOutcome
           if currOutcome # allowed
             return currOutcome
@@ -1763,15 +1768,23 @@ Sunny._CRUD = do ->
       return null
   
   delete: (obj) ->
-    for fld in obj.meta().allFields()
-      if fld.type?.isComposition() && not fld.type.isPrimitive()
-        refs = obj.readField(fld.name)
-        refs = [refs] if fld.type.isScalar()
-        for ref in refs
-          if ref instanceof Sunny.Model.Record
-            ref.destroy()
-    obj.meta().repr().remove(_id: obj.id())
-
+    check = Sunny.ACL.check_delete(obj)
+    if check.isAllowed()
+      for fld in obj.meta().allFields()
+        if fld.type?.isComposition() && not fld.type.isPrimitive()
+          refs = obj.readField(fld.name)
+          refs = [refs] if fld.type.isScalar()
+          for ref in refs
+            if ref instanceof Sunny.Model.Record
+              ref.destroy()
+      obj.meta().repr().remove(_id: obj.id())
+    else
+      Sunny.ACL.signalAccessDenied
+        type:    "delete"
+        sigName: obj.meta().name
+        msg:     check.denyReason
+      return null
+    
   readField: (obj, fldName) ->
     fld = Sunny.Utils.ensureFld(obj, fldName)
     meta = obj.meta()

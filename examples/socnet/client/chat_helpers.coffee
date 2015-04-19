@@ -11,3 +11,10 @@ UI.registerHelper "saluteFull", (user) ->
 
 UI.registerHelper "isInMyNetwork", isInMyNetwork
 UI.registerHelper "isNotInMyNetwork", (user) -> !isInMyNetwork(user)
+
+
+Sunny.ACL.onAccessDenied (params) ->
+  console.log params
+  $('#acl-denied').text("Operation #{params.sigName}.#{params.type} denied: #{params.msg}")
+  # $('#error-div').show()
+  $("#error-div").fadeTo(4000, 500).slideUp(500, ()->)

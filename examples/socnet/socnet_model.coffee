@@ -15,7 +15,15 @@ user class User
   statusText: () -> this.status || "<statusless>"
 
   addRelationship: (kind, user) ->
-    this.network.push [kind, user]    
+    this.network.push [kind, user]
+
+  hasConnection: (user) ->
+    findIndex(this.network, (e) -> e[1].equals(user)) != -1
+    
+  friendshipKinds: (user) ->
+    kinds = findFirst this.network.groupByRange(), (e) -> e.key.equals(user)
+    return [] unless kinds
+    return map kinds.value, (e) -> e[0]
 
 record class Chunk
   isText:    () -> false
@@ -153,6 +161,7 @@ event class PostEvent extends ClientEvent
 
 
 policy User,
+  # user object in question is different from the logged in user
   _precondition: (user) -> not user.equals(this.client?.user)
 
   read:
@@ -161,26 +170,51 @@ policy User,
   update:
     "! wall": (user, val) -> return this.deny("can't edit other people's data")
 
-# policy Client,
-#   _precondition: (clnt) -> not clnt.equals(this.client)
+policy Post,
+  # post in question has author different from the logged in user
+  _precondition: (post) -> not post.author.equals(this.client?.user)
 
-#   read:
-#     user: (clnt, user) ->
-#        if clnt?.user?.status == "busy"
-#          return this.deny()
-#        else
-#          return this.allow()
+  delete: (post) -> return this.deny("cannot delete someone else's post")
 
-# # show messages starting with "#private" only to members
-# policy ChatRoom,
-#   read:
-#     messages: (room, msgs) ->
-#       return this.deny() if not this.client?.user
-#       if room.members.contains this.client?.user
-#         return this.allow()
-#       else
-#         return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
 
+# ==============================================================================
+# Ivan's policies
+# ==============================================================================
+policy User,
+  # user object in question is "Ivan" and is different from the logged in user
+  _precondition: (user) -> (not user.equals(this.client?.user)) and user.email == "ivan@mit.edu"
+
+  # hide friendship kinds
+  read:
+    "network": (user) -> return this.allow(user.network.groupByRange().map((e) -> ["", e.key]))
+
+
+# ==============================================================================
+# Eunsuk's policies
+# ==============================================================================
+policy Post,
+  find: (posts) ->
+    self = this
+    hidePost = (post) ->
+      post.author?.email == "eskang@mit.edu" and
+      post.text.search("#fucker") != -1 and
+      post.author.friendshipKinds(self.client.user).contains("boss")
+    return this.allow(filter posts, (p) -> !hidePost(p))
+
+# ==============================================================================
+# Aleks's policies
+# ==============================================================================
+policy User,
+  # user object in question is "Aleks" and is different from the logged in user
+  _precondition: (user) -> (not user.equals(this.client?.user)) and user.email == "aleks@mit.edu"
+
+  # don't let people see my network
+  read:
+    "network": -> return this.allow([])
+    
+  # don't allow people to post on my wall
+  update:
+    "wall": (user) -> return this.deny("DON'T POST ON ALEKS' WALL!!!")
 
 
 
