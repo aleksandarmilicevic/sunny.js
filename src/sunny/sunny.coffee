@@ -761,6 +761,7 @@ convertMeteorObj = (sunnyCls, meteorObj) ->
 
 convertObj = (sunnyCls, obj) ->
   return obj unless obj
+  return obj if obj instanceof Sunny.Model.Sig
   if sunnyCls or obj?._sunny_type
     obj = convertMeteorObj(sunnyCls, obj)
     obj = null if obj.isGhost()
@@ -844,7 +845,7 @@ createSunnyArray = (sunnyOwnerObj, sunnyFld, array) ->
   if sunnyFld.type?.isReference()
     allFldNames = {}
     for e in ans
-      if e.meta?()
+      if e && e.meta?()
         for f in e.meta().allFields()
           allFldNames[f.name] = f.name
     for fname of allFldNames
@@ -873,7 +874,7 @@ Sunny.MetaModel = do ->
       delete hash._precondition
       for op, fn of hash
         switch op
-          when "read", "update"
+          when "read", "update", "push", "pull"
             p = new Sunny.Model.FldPolicy(this, op, @name, fn, pre)
             Sunny.Meta.policies.push(p)
           else
@@ -1167,7 +1168,7 @@ Sunny.Model = do ->
                 [new Sunny.Model.SigPolicy(this,op,pol,pre)]
               when "delete"
                 [new Sunny.Model.ObjPolicy(this,op,pol,pre)]
-              when "read", "update"
+              when "read", "update", "push", "pull"
                 new Sunny.Model.FldPolicy(this,op,f,fn,pre) for f,fn of pol
               else
                 throw("unrecognized operation: #{op}")
@@ -1215,19 +1216,26 @@ Sunny.Model = do ->
       return EJSON.equals(this.paramValues(), other.paramValues())
 
     # -----------------------------------------------
+
+    _checkRequires: (cstr) ->
+      if cstr != Event
+        err = this._checkRequires(cstr.__super__.constructor)
+        return err if err
+      return null unless cstr.prototype.requires
+      cstr.prototype.requires.call(this)
+
     _trigger: (props) ->
       this._setProps(props) if props
       this.setFrom(Sunny.myClient())
       this.setTo(Sunny.myServer())
-      if this.requires
-        err = this.requires()
-        if (err)
-          sdebug("precondition to event #{this} failed: '#{err}'")
-          Sunny.ACL.signalAccessDenied
-            type: "precondition"
-            event: this
-            msg:   err
-          return false
+      err = this._checkRequires(this.constructor)
+      if (err)
+        sdebug("precondition to event #{this} failed: '#{err}'")
+        Sunny.ACL.signalAccessDenied
+          type: "precondition"
+          event: this
+          msg:   err
+        return false
       return this.ensures()
 
     trigger: (props) ->
@@ -1301,6 +1309,11 @@ Sunny.Model = do ->
   class OpDelete extends Op
     constructor: (obj) -> super("delete", {obj: obj})
 
+  class OpArrPush extends Op
+    constructor: (obj, fldName, val) -> super("push", {obj: obj, val: val, fldName: fldName})
+
+  class OpArrPull extends Op
+    constructor: (obj, fldName, val) -> super("pull", {obj: obj, val: val, fldName: fldName})
 
   # -----------------------------------------------------------------
   #   class Policy
@@ -1483,6 +1496,8 @@ Sunny.Model = do ->
   OpRead        : OpRead
   OpUpdate      : OpUpdate
   OpDelete      : OpDelete
+  OpArrPush     : OpArrPush
+  OpArrPull     : OpArrPull
   SunnyArrayExt : SunnyArrayExt
 
 Sunny.simportAll(this, Sunny.Model)
@@ -1642,7 +1657,8 @@ Sunny.Dsl = do ->
     _mUser: Obj
     email: Text
     name: Text
-
+    avatar: Text
+    
     __static__: {
       findOrCreate: (mUser) ->
         usr = this.findOne("_mUser._id": mUser._id)
@@ -1676,12 +1692,17 @@ Sunny.ACL = do ->
   _allowOutcome = new Sunny.Model.PolicyOutcome(true)
   _denyOutcome  = new Sunny.Model.PolicyOutcome(false, undefined, "denied by default")
 
+  _allowByDefaultOutcome = new Sunny.Model.PolicyOutcome(true)
+  _allowByDefaultOutcome._byDefault = true
+  _denyByDefaultOutcome = new Sunny.Model.PolicyOutcome(false, undefined, "denied by default")
+  _denyByDefaultOutcome._byDefault = true
+    
   _addListener = (fn) ->
     throw("not a function: #{fn}") unless typeof(fn) == "function"
     _accessDeniedListeners.push(fn)
 
   _defaultOutcome = () ->
-    if Sunny.ACL.isAllowByDefault() then _allowOutcome else _denyOutcome
+    if Sunny.ACL.isAllowByDefault() then _allowByDefaultOutcome else _denyByDefaultOutcome
 
   lastCheck: () ->
     arr = _checkHistory.get([])
@@ -1709,6 +1730,8 @@ Sunny.ACL = do ->
   check_read:   (obj, fldName, val) -> Sunny.ACL.check(new OpRead(obj, fldName, val))
   check_update: (obj, fldName, val) -> Sunny.ACL.check(new OpUpdate(obj, fldName, val))
   check_delete: (obj)               -> Sunny.ACL.check(new OpDelete(obj))
+  check_push:   (obj, fldName, val) -> Sunny.ACL.check(new OpArrPush(obj, fldName, val))
+  check_pull:   (obj, fldName, val) -> Sunny.ACL.check(new OpArrPull(obj, fldName, val))
   check:        (op) ->
     outcome = do ->
       return _allowOutcome unless Sunny.myClient() # executing on behalf of Server -> ok
@@ -1735,10 +1758,15 @@ Sunny.ACL = do ->
                 msg = msg + " (restricted)"
                 msg += ": #{outcome.value.length}" if outcome.value instanceof Array
               srv_sdebug msg
-              currVal = outcome.value if outcome.hasValue()
-              # if outcome.hasValue()
-              #   currVal = wrap(op.obj, op.obj.meta().field(op.fldName), outcome.value)
-              currOutcome = outcome if outcome.hasValue() or not currOutcome
+              currOutcome = outcome if not currOutcome
+              if outcome.hasValue()
+                currVal = if op.obj
+                            wrap(op.obj, op.obj.meta().field(op.fldName), outcome.value)
+                          else
+                            outcome.value
+                currOutcome = outcome
+                currOutcome.value = currVal
+
           if currOutcome # allowed
             return currOutcome
           else
@@ -1840,7 +1868,9 @@ Sunny._CRUD = do ->
   arrayFieldPush: (obj, fname, val) ->
     fld = Sunny.Utils.ensureFld(obj, fname)
 
-    check = Sunny.ACL.check_update obj, fname # Sunny.ACL.check_push obj, fname, val
+    checkPush = Sunny.ACL.check_push obj, fname, val
+    checkUpdate = Sunny.ACL.check_update obj, fname 
+    check = if checkPush._byDefault then checkUpdate else checkPush
     if check.isAllowed()
       # obj._setProp fname, fvalue
       mod = {}; mod[fname] = toMeteorRef(val)
@@ -1857,7 +1887,9 @@ Sunny._CRUD = do ->
   arrayFieldPull: (obj, fname, val) ->
     fld = Sunny.Utils.ensureFld(obj, fname)
 
-    check = Sunny.ACL.check_update obj, fname # Sunny.ACL.check_pull obj, fname, val
+    checkPull = Sunny.ACL.check_pull obj, fname, val
+    checkUpdate = Sunny.ACL.check_update obj, fname
+    check = if checkPull._byDefault then checkUpdate else checkPull
     if check.isAllowed()
       # obj._setProp fname, fvalue
       mod = {}; mod[fname] = toMeteorRef(val)
