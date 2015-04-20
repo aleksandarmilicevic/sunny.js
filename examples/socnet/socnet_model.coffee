@@ -6,7 +6,6 @@ simport Sunny.Types
 
 user class User
   status: Text
-  avatar: Text
   location: Text
   network: [Text, "User"]
   wall: set "Post"
