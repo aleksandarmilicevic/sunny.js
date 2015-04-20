@@ -13,7 +13,7 @@ UI.registerHelper "isInMyNetwork", isInMyNetwork
 UI.registerHelper "isNotInMyNetwork", (user) -> !isInMyNetwork(user)
 
 
-Sunny.ACL.onAccessDenied (params) ->
+Sunny.ACL.setAccessDeniedCb (params) ->
   console.log params
   $('#acl-denied').text("Operation #{params.sigName}.#{params.type} denied: #{params.msg}")
   # $('#error-div').show()

@@ -48,13 +48,15 @@
 
 <template name="other_users">
   <div class="inlineb online-users">
-  	<h3>All Other Users</h3>
-    {{#each User}}
-       {{#if isNotInMyNetwork this}}
-         <div {{AddToMyNetwork user=this kind=_prompt_}} {{sunny_trigger}} class="addToNetwork">
-           {{> _user user=this avatar=true}}
-         </div>
-       {{/if}}
-    {{/each}}
+    <h3>Add User</h3>
+    <input type="text" class="search-query" placeholder="enter user name or email"
+           {{AddToMyNetwork kind="friends"}} {{AddToMyNetwork_userName}} {{sunny_trigger}}>
+    <!-- {{#each User}} -->
+    <!--    {{#if isNotInMyNetwork this}} -->
+    <!--      <div {{AddToMyNetwork user=this kind=_prompt_}} {{sunny_trigger}} class="addToNetwork"> -->
+    <!--        {{> _user user=this avatar=true}} -->
+    <!--      </div> -->
+    <!--    {{/if}} -->
+    <!-- {{/each}} -->
   </div>
 </template>

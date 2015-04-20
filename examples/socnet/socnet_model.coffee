@@ -81,10 +81,17 @@ event class AddToMyNetwork extends ClientEvent
   params:
     kind: Text
     user: User
+    userName: Text
 
   requires: () ->
     return "must log in first!" unless this.client?.user
-    return "must specify kind" unless this.kind
+    return "must specify user" unless (this.user || this.userName)
+    unless this.user
+      if this.userName.search("@") != -1
+        this.user = User.findOne(email: this.userName)
+      else
+        this.user = User.findOne(name: this.userName)
+      return "User #{this.userName} not found" unless this.user
 
   ensures: () ->
     me = this.client.user
