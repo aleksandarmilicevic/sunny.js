@@ -87,6 +87,13 @@
       {{event.time}}
     </dd>
 
+    <dt class="evlab evlab-when">finalized</dt>
+    <dd class="event-finalized">
+      <button type="button" class="bnt" {{ToggleFinalized party=event}} {{sunny_trigger}}>
+        {{#if event.finalized}}yes{{else}}no{{/if}}
+      </button>
+    </dd>
+
     <dt class="evlab evlab-hosts">
       hosts<br>
       <span class="glyphicon glyphicon-user" 

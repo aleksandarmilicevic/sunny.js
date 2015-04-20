@@ -11,6 +11,7 @@ record class Party
   name: Text
   location: Text
   time: Val
+  finalized: Bool
   hosts: set User
   guests: set User
 
@@ -38,8 +39,14 @@ event class ClientEvent
 event class SelectEvent extends ClientEvent
   params:
     party: Party
-
   ensures: () -> this.client.selectedEvent = this.party
+
+event class ToggleFinalized extends ClientEvent
+  params:
+    party: Party
+
+  requires: () -> return "must specify party" unless this.party
+  ensures: () -> this.party.finalized = not this.party.finalized
 
 event class AddGuestHost extends ClientEvent
   params:
@@ -92,10 +99,6 @@ event class RemoveGuest extends AddGuestHost
   ensures: () ->
     this.party.guests.remove(this.user)
 
-
-
-
-            
 event class CreateEmptyEvent extends ClientEvent
   requires: () ->
      return "must log in first" unless this.client?.user
@@ -122,10 +125,12 @@ policy User,
     "*": (user, val) -> return this.deny("can't edit other people's data")
 
 policy Party,
-  # client user is neither a host nor a guest
+  # client user is neither a host nor a guest OR
+  # client is a guest but party hasn't been finalized
   _precondition: (party) ->
     u = this.client?.user
-    not (party.hosts.contains(u) || party.guests.contains(u))
+    (!party.hosts.contains(u) && !party.guests.contains(u)) or
+    (party.guests.contains(this.client?.user) && !party.finalized)
      
   read: 
     "name":     -> return this.allow("<private party>")
@@ -133,6 +138,26 @@ policy Party,
     "time":     -> return this.allow("<unknown time>")
     "hosts":    -> return this.allow([])
     "guests":   -> return this.allow([])
+     
+# policy Party,
+#   # client user is neither a host nor a guest ==> can't see name, location, time
+#   _precondition: (party) ->
+#     u = this.client?.user
+#     !party.hosts.contains(u) && !party.guests.contains(u)
+     
+#   read: 
+#     "name":     -> return this.allow("<private party>")
+#     "location": -> return this.allow("<secret location>")
+#     "time":     -> return this.allow("<unknown time>")
+
+# policy Party,
+#   # client user is not a host and the party hasn't been finalized
+#   _precondition: (party) ->
+#     !party.hosts.contains(this.client?.user) && !party.finalized
+     
+#   read:
+#     "hosts":    -> return this.allow([])
+#     "guests":   -> return this.allow([])
 
 policy Party,
   # client user is not a host
