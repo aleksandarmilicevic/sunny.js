@@ -1,0 +1,172 @@
+<!-- ====================================== -->
+<!-- user_avatar                            -->
+<!-- -------------------------------------- -->
+<!-- params:                                -->
+<!--   user: User                           -->
+<!-- ====================================== -->
+<template name="user_avatar">
+{{#if user}}
+  <!-- <img src="/images/gnuhead.png" width="45"/> -->
+  <!-- <img src="/images/{{this.user.name}}.jpg" width="45"/> -->
+  <img {{editableField obj=user fld="avatar"}} src="{{user.avatarLink}}" width="45" height="45"/>
+{{else}}
+  <img src="/images/anonymous-50x50.png" width="45" height="45"/>
+{{/if}}
+</template>
+
+<!-- ====================================== -->
+<!-- _user                                  -->
+<!-- -------------------------------------- -->
+<!-- params:                                -->
+<!--   user         : User                  -->
+<!--   avatar       : Bool                  -->
+<!--   status       : Bool                  -->
+<!--   editableName : Bool                  -->
+<!-- ====================================== -->
+<template name="_user">
+    <div class="User list-group-item {{#if isMe this.user}}me{{/if}}">
+      {{#if avatar}}
+        {{> user_avatar user=user}}
+      {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <h4 class="list-group-item-heading"
+              {{editableField obj=this.user fld="name"}}>
+            {{salute this.user}}
+          </h4>
+        {{else}}
+          <h4 class="list-group-item-heading">{{salute this.user}}</h4>
+        {{/if}}
+        {{#if status}}
+          <p class="list-group-item-text">
+            <a {{editableField obj=this.user fld="status"}}>{{this.user.statusText}}</a>
+          </p>
+        {{/if}}
+      </div>
+    </div>
+</template>
+
+<!-- ====================================== -->
+<!-- network_by_users                       -->
+<!-- -------------------------------------- -->
+<!-- params:                                -->
+<!-- ====================================== -->
+<template name="my_events">
+  <button id="create_event" class="btn btn-primary" {{CreateEmptyEvent}} {{sunny_trigger}}>New</button>
+  <h3>Events</h3>
+  <ul class="events">
+  {{#each Party}}
+    <li>
+    <a class="event-name" {{SelectEvent party=this}} {{sunny_trigger}}>{{name}}</a>
+    </li>
+  {{/each}}
+  </ul>
+</template>
+
+<!-- ====================================== -->
+<!-- _event                                 -->
+<!-- -------------------------------------- -->
+<!-- params:                                -->
+<!--   event: Party                         -->
+<!-- ====================================== -->
+<template name="_event">
+  <h3>Selected event</h3>
+  <dl class="event-info dl-horizontal">
+    <dt class="evlab evlab-what">what</dt>
+    <dd class="event-name" {{editableField obj=event fld="name"}}>{{event.name}}</dd>
+
+    <dt class="evlab evlab-where">where</dt>
+    <dd class="event-location" {{editableField obj=event fld="location"}}>
+      <span class="glyphicon glyphicon-globe"></span>
+      {{event.location}}
+    </dd>
+
+    <dt class="evlab evlab-when">when</dt>
+    <dd class="event-time" {{editableField obj=event fld="time"}}>
+      <span class="glyphicon glyphicon-calendar"></span>
+      {{event.time}}
+    </dd>
+
+    <dt class="evlab evlab-hosts">
+      hosts<br>
+      <span class="glyphicon glyphicon-user" 
+            {{AddHost party=event userName=_prompt_}}
+            {{sunny_trigger}}>+</span>
+    </dt>
+    <dd class="event-hosts">
+      {{#each event.hosts}}
+        <span class="host-guest">
+          {{> user_avatar user=this}}
+          <i class="icon-remove" {{RemoveHost party=../event user=this}} {{sunny_trigger}}></i>
+        </span>
+      {{/each}}
+    </dd>
+
+    <dt class="evlab evlab-guests">
+      guests<br>
+      <span class="glyphicon glyphicon-user"
+            {{AddGuest party=event userName=_prompt_}}
+            {{sunny_trigger}}>+</span>
+    </dt>
+    <dd class="event-guests">
+      {{#each event.guests}}
+        <span class="host-guest">
+          {{> user_avatar user=this}}
+          <i class="icon-remove"  {{RemoveGuest party=../event user=this}} {{sunny_trigger}}></i>
+        </span>
+      {{/each}}
+    </dd>
+  </dl>
+  
+</template>
+
+
+<!-- ====================================== -->
+<!-- friend_groups                          -->
+<!-- -------------------------------------- -->
+<!-- params:                                -->
+<!-- ====================================== -->
+<template name="friend_groups">
+  <div class="inlineb online-users">
+    <h3>Me</h3>
+    <div class="friendUserDiv" {{SelectUser user=Client.user}} {{sunny_trigger}}>
+      {{> _user user=Client.user status=true avatar=true}}
+    </div>
+    <h3>My Network</h3>
+    <ul class="networkTreeOuter">
+    {{#each Client.user.network.groupByDomain}}
+      <li class="outer">{{key}}</li>
+      <ul>
+        {{#each value}}
+        <li class="inner">
+          <div class="friendUserDiv" {{SelectUser user=this.last}} {{sunny_trigger}}>
+            {{> _user user=this.last status=true avatar=true}}
+          </div>
+          <span class="editRelBtn glyphicon glyphicon-plus"
+                {{AddToMyNetwork kind=_prompt_ user=this.last}}
+                {{sunny_trigger}}
+                ></span>
+          <span class="removeRelBtn glyphicon glyphicon-remove"
+                {{RemoveMyRel kind=../key user=this.last}}
+                {{sunny_trigger}}></span>
+        </li>
+        {{/each}}
+      </ul>
+    {{/each}}
+    </ul>
+  </div>
+</template>
+
+
+<!-- ====================================== -->
+<!-- other_users                            -->
+<!-- -------------------------------------- -->
+<!-- params:                                -->
+<!-- ====================================== -->
+<template name="other_users">
+  <div class="inlineb online-users">
+    <h3>Add User</h3>
+    <input type="text" class="search-query" placeholder="enter user name or email"
+           {{AddToMyNetwork kind="friends"}} {{AddToMyNetwork_userName}} {{sunny_trigger}}>
+  </div>
+</template>
