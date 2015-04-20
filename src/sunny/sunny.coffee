@@ -1002,6 +1002,7 @@ Sunny.Model = do ->
   rc class Sig
     init: (props) ->
       this._defProps()
+      this._setProp(f.name, undefined) for f in this.meta().allFields()
       this._setProps(props)
       return this
 
@@ -1694,7 +1695,7 @@ Sunny.ACL = do ->
   lastWriteOutcome: () -> findLast(_checkHistory.get([]), (e) -> e.op.name == "update")?.outcome
 
   signalAccessDenied:    (params) -> fn(params) for fn in _accessDeniedListeners
-  setAccessDeniedCb:     (cb)     -> _accessDeniedListeners = []; _addListener(fn) if cb
+  setAccessDeniedCb:     (cb)     -> _accessDeniedListeners = []; _addListener(cb) if cb
   onAccessDenied:        (cb)     -> _addListener(cb)
   accessDeniedListeners: ()       -> _accessDeniedListeners
 

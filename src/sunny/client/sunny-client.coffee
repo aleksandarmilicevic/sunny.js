@@ -52,11 +52,13 @@ if Meteor.isClient
       iterParamAttributes $closestEventBlock[0].attributes, (an, av) ->
         setEventParam(ev, an, av, $closestEventBlock)
       pfix = "#{eventKls.name}."
-      $closestEventBlock.find("[sunny-event-param]").each () ->
-        pName = $(this).attr("sunny-event-param")
-        if pName.indexOf(pfix) == 0
+      parseAndSetEventParam = ($e) ->
+        pName = $e.attr("sunny-event-param")
+        if pName && pName.indexOf(pfix) == 0
           pName = pName.substring(pfix.length)
-          setEventParam(ev, pName, $(this).val(), $(this))
+          setEventParam(ev, pName, $e.val(), $e)
+      $closestEventBlock.find("[sunny-event-param]").each () -> parseAndSetEventParam($(this))
+      parseAndSetEventParam($closestEventBlock)  
 
     unless $elem.get(0) == $closestEventBlock[0]
       iterParamAttributes $elem.get(0).attributes, (an, av) ->
