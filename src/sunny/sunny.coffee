@@ -166,7 +166,7 @@ applyDbOp = (fnName, obj, args...) ->
   # if Meteor.isServer && Sunny.Queue.currInvocation()
   #   sdebug "in invocation"
   #   args.push {tx: true}
-  fn.apply(obj, args)
+  return fn.apply(obj, args)
 
 getSunnyClient = (conn) ->
   if conn instanceof SunnyClient
@@ -263,11 +263,14 @@ toMeteorRef = (obj) ->
 
 
 _equalsFn = (obj) ->
-  eqFn = (e) -> obj == e
+  if !obj
+    return (e) -> !e
   if obj && Sunny.Types.isSigKls(obj.constructor) # && not this._myFld.type.isPrimitive() &&
-    eqFn = (e) -> obj.equals(e)
+    return (e) -> obj.equals(e)
+  if obj && obj instanceof Sunny.Model.Op
+    return (e) -> obj.equals(e)
   if obj instanceof Array
-    eqFn = (arr) ->
+    return (arr) ->
       return false unless arr instanceof Array
       return false unless arr.length == obj.length
       idx = 0
@@ -275,7 +278,7 @@ _equalsFn = (obj) ->
         return false unless _equalsFn(e)(arr[idx])
         idx = idx + 1
       return true        
-  return eqFn
+  return (e) -> obj == e
 
 _objToArray = (obj) ->
   ans = []
@@ -390,7 +393,9 @@ Sunny.Log = do ->
 
   srv_sdebug: (msg) ->
     sdebug(msg) if Meteor.isServer
-    
+
+  poly_sdebug: (msg) -> srv_sdebug(msg)    
+        
   sdebug: (msg) ->
     return console.log(_indent.get("") + msg) if Meteor.isClient
     _colorFiber(msg)
@@ -1293,6 +1298,14 @@ Sunny.Model = do ->
       ans += " #{@obj}"      if @obj
       ans += ".#{@fldName}"  if @fldName
       ans
+    equals: (other) ->
+      return false unless other
+      return false unless this.constructor == other.constructor
+      return false unless this.name == other.name
+      return false unless this.sig == other.sig
+      return false unless _equalsFn(this.obj)(other.obj)
+      return false unless this.fldName == other.fldName
+      return true
 
   class OpCreate extends Op
     constructor: (sig) -> super("create", sig: sig)
@@ -1687,6 +1700,9 @@ Sunny.Dsl = do ->
 Sunny.ACL = do ->
   _checkHistory = new Sunny.Utils.FiberLocalVar("Sunny.ACL.checkHistory")
   _inACLcheck = new Sunny.Utils.FiberLocalVar("Sunny.ACL._inACLcheck")
+  _aclCheckStack = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCheckStack", {})
+  _aclCheckCache = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCheckCache", {})
+
   _accessDeniedListeners = []
   _allowByDefault = true
   _allowOutcome = new Sunny.Model.PolicyOutcome(true)
@@ -1703,6 +1719,53 @@ Sunny.ACL = do ->
 
   _defaultOutcome = () ->
     if Sunny.ACL.isAllowByDefault() then _allowByDefaultOutcome else _denyByDefaultOutcome
+
+  # _printStack: (stack) ->
+  #   pfix = "        "
+  #   indt = ""
+  #   poly_sdebug "#{pfix} stack size = #{stack.length}"
+  #   for op in stack
+  #     poly_sdebug "#{pfix}#{indt} #{op.toString()}"
+  #     indt = indt + " "
+
+  _printStack = (hash) ->
+    pfix = "        "
+    for op, v of hash
+      poly_sdebug "#{pfix} #{op}: #{hash[op]}"
+        
+  _findAndCheckPolicies = (op) ->
+    poli = Sunny.ACL.applicablePolicies(op)
+    if poli.length == 0
+      return _defaultOutcome()
+    else
+      poly_sdebug("policies for #{op}: #{poli.length}")
+      currVal = op.val
+      currOutcome = null
+      for p in poli
+        poly_sdebug "  checking policy on behalf of #{Sunny.currClient()}"
+        op.val = currVal
+        outcome = p.check(op)
+        if outcome.isDenied()
+          poly_sdebug "  -> denied"
+          return outcome # denied; return
+        else if outcome.isAllowed()
+          msg = "  -> allowed";
+          if outcome.hasValue()
+            msg = msg + " (restricted)"
+            msg += ": #{outcome.value.length}" if outcome.value instanceof Array
+          poly_sdebug msg
+          currOutcome = outcome if not currOutcome
+          if outcome.hasValue()
+            currVal = if op.obj
+                        wrap(op.obj, op.obj.meta().field(op.fldName), outcome.value)
+                      else
+                        outcome.value
+            currOutcome = outcome
+            currOutcome.value = currVal
+       if currOutcome # allowed
+        return currOutcome
+      else
+        return _defaultOutcome()
 
   lastCheck: () ->
     arr = _checkHistory.get([])
@@ -1725,6 +1788,8 @@ Sunny.ACL = do ->
 
   applicablePolicies: (op) -> filter Sunny.Meta.policies, (p) -> p.applies(op)
 
+  invalidateCache:    () -> _aclCheckCache.set({}); 
+
   check_create: (sig)               -> Sunny.ACL.check(new OpCreate(sig))
   check_find:   (sig, records)      -> Sunny.ACL.check(new OpFind(sig, records))
   check_read:   (obj, fldName, val) -> Sunny.ACL.check(new OpRead(obj, fldName, val))
@@ -1737,42 +1802,28 @@ Sunny.ACL = do ->
       return _allowOutcome unless Sunny.myClient() # executing on behalf of Server -> ok
       return _allowOutcome if _inACLcheck.get(false)
       _inACLcheck.set(true)
+      # opStr = op.toString();
+      # stack = _aclCheckStack.get()
+      # cache = _aclCheckCache.get()
+      # cached = cache[opStr]
+      # if cached
+      #   poly_sdebug "-------------- returning from cache for op #{op}: #{cached}"
+      #   return cached 
+      # if stack[op.toString()]
+      #   poly_sdebug "********** ACL stack contains op #{op} ---> allowing"
+      #   return _allowOutcome 
+      # stack[op.toString()] = true
+      # poly_sdebug "@@@@@@@@ pushing #{op} to ACL stack"
+      # _printStack(stack)
       try
-        poli = Sunny.ACL.applicablePolicies(op)
-        if poli.length == 0
-          return _defaultOutcome()
-        else
-          srv_sdebug("policies for #{op}: #{poli.length}")
-          currVal = op.val
-          currOutcome = null
-          for p in poli
-            srv_sdebug "  checking policy on behalf of #{Sunny.currClient()}"
-            op.val = currVal
-            outcome = p.check(op)
-            if outcome.isDenied()
-              srv_sdebug "  -> denied"
-              return outcome # denied; return
-            else if outcome.isAllowed()
-              msg = "  -> allowed";
-              if outcome.hasValue()
-                msg = msg + " (restricted)"
-                msg += ": #{outcome.value.length}" if outcome.value instanceof Array
-              srv_sdebug msg
-              currOutcome = outcome if not currOutcome
-              if outcome.hasValue()
-                currVal = if op.obj
-                            wrap(op.obj, op.obj.meta().field(op.fldName), outcome.value)
-                          else
-                            outcome.value
-                currOutcome = outcome
-                currOutcome.value = currVal
-
-          if currOutcome # allowed
-            return currOutcome
-          else
-            return _defaultOutcome()
+        ans = _findAndCheckPolicies(op)
+        # cache[opStr] = ans
+        ans
       finally
         _inACLcheck.set(false)
+        # delete stack[op.toString()]
+        # poly_sdebug "@@@@@@@@ popped #{op} from the ACL stack"
+        # Sunny.ACL.invalidateCache() if Object.keys(stack).length == 0
 
     _checkHistory.push op: op, outcome: outcome
     return outcome
@@ -1852,7 +1903,7 @@ Sunny._CRUD = do ->
       if check.isAllowed()
         okFldCnt++
         obj._setProp fname, fvalue
-        mod[fname] = toMeteorRef(fvalue)
+        mod[fname] = toMeteorRef(fvalue)        
       else
         Sunny.ACL.signalAccessDenied
           type: "write"
@@ -1967,7 +2018,9 @@ Sunny.Queue = do ->
       _queue.push(inv)
       try
         # tx.start()
-        onClientBehalf connId, () -> opFn.apply(self, args)
+        onClientBehalf connId, () ->
+          Sunny.ACL.invalidateCache()
+          opFn.apply(self, args)
         # tx.commit()
       catch err
         _rootInvocation().error = err
