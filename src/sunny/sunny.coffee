@@ -140,6 +140,7 @@ Sunny.simportAll(this, Sunny.Fun)
 Sunny.Conf = do ->
   registerGlobalNames: true
   serverRecordPersistence: "reuse" # valid values: 'reuse', 'create', 'replace'
+  deepPolicyChecking: true
 
 # ====================================================================================
 #   standard prototype extensions
@@ -433,6 +434,7 @@ Sunny.Deps = do ->
   _compId = 0
   _depId = 0
   _currComp = new Sunny.Utils.FiberLocalVar("Sunny.Deps.currComp")
+  _dependListeners = new Sunny.Utils.FiberLocalVar("Sunny.Deps.dependListeners", [])
 
   # -----------------------------------------------------------------
   #   class Comp
@@ -446,7 +448,7 @@ Sunny.Deps = do ->
       @stopped = false
       @invalidated = false
 
-    invalidate:  () -> return if @invalidated; @invalidated = true; Sunny.Deps.rerun(this) #Sunny.Queue.enqueueComp(this)
+    invalidate:  () -> return if @invalidated; @invalidated = true; Sunny.Deps.rerun(this)
     stop:        () -> @stopped = true; @_deps = []; console.log "stoped #{this}"
     hasDeps:     () -> @_deps.length > 0
     run:         () ->
@@ -471,6 +473,7 @@ Sunny.Deps = do ->
     invalidate: () ->
       return if @invalidated
       @invalidated = true
+      sdebug "~~~ rerunning comp #{this}"
       this.run()
 
     _exe: (meta, fn) ->
@@ -577,7 +580,10 @@ Sunny.Deps = do ->
       @name = name
       @comps = {}
 
-    depend:        () -> this._addComp(Sunny.Deps.currentComp())
+    depend:        () ->
+      lnFn(this) for lnFn in _dependListeners.get()
+      this._addComp(Sunny.Deps.currentComp())
+        
     changed:       () ->
       sdebug "#{this} changed; invalidating #{this.numDependents()} comps";
       tmp = @comps
@@ -622,11 +628,15 @@ Sunny.Deps = do ->
   FldComp    : FldComp
   FindComp   : FindComp
   Dep        : Dep
-  currentComp: () -> if Meteor.isClient then null else _currComp.get()
-  rerun      : (comp)       -> sdebug("rerunning #{comp}"); _run(comp)
-  autorun    : (connId, fn) -> _run(null, fn)
+  currentComp: ()              -> if Meteor.isClient then null else _currComp.get()
+  rerun      : (comp)          -> sdebug("rerunning #{comp}"); _run(comp)
+  autorun    : (connId, fn)    -> _run(null, fn)
   withComp   : (comp, blockFn) -> _withComp(comp, blockFn)
-
+  pushDepLn  : (fn)            -> _dependListeners.push(fn)
+  popDepLn   : (fn)            ->
+    popped = _dependListeners.pop()
+    assert fn == popped, "out of order depend listener popped"
+    popped
 
 
 # ====================================================================================
@@ -1700,8 +1710,23 @@ Sunny.Dsl = do ->
 Sunny.ACL = do ->
   _checkHistory = new Sunny.Utils.FiberLocalVar("Sunny.ACL.checkHistory")
   _inACLcheck = new Sunny.Utils.FiberLocalVar("Sunny.ACL._inACLcheck")
-  _aclCheckStack = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCheckStack", {})
-  _aclCheckCache = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCheckCache", {})
+
+  # ----------------------------------------------------------------
+  # implementation of stack and cache using arrays
+  _emptyCache = ()            -> []
+  _cacheGet   = (k)    -> findFirst(_aclCache.get(), (e) -> e.key.equals(k))?.val
+  _cacheSet   = (k, v) -> _aclCache.push({key: k, val: v})
+
+  _stackPush  = (e)    -> _aclStack.push(e)
+  _stackPop   = (e)    -> ans = _aclStack.pop(); assert ans == e, "ACL stack pop out of order: #{ans} != #{e}"; ans
+  _stackHas   = (e)    -> contains _aclStack.get(), e
+  _emptyStack = ()     -> []
+  _stackEmpty = ()     -> _aclStack.get().length == 0
+  _printStack = ()     -> poly_sdebug "         #{op}" for op in _aclStack.get()
+
+  _aclStack = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclStack", _emptyStack())
+  _aclCache = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCache", _emptyCache())
+  # ----------------------------------------------------------------
 
   _accessDeniedListeners = []
   _allowByDefault = true
@@ -1719,19 +1744,6 @@ Sunny.ACL = do ->
 
   _defaultOutcome = () ->
     if Sunny.ACL.isAllowByDefault() then _allowByDefaultOutcome else _denyByDefaultOutcome
-
-  # _printStack: (stack) ->
-  #   pfix = "        "
-  #   indt = ""
-  #   poly_sdebug "#{pfix} stack size = #{stack.length}"
-  #   for op in stack
-  #     poly_sdebug "#{pfix}#{indt} #{op.toString()}"
-  #     indt = indt + " "
-
-  _printStack = (hash) ->
-    pfix = "        "
-    for op, v of hash
-      poly_sdebug "#{pfix} #{op}: #{hash[op]}"
         
   _findAndCheckPolicies = (op) ->
     poli = Sunny.ACL.applicablePolicies(op)
@@ -1767,6 +1779,64 @@ Sunny.ACL = do ->
       else
         return _defaultOutcome()
 
+  # ----------------------------------------------------------------
+  # Policy code executes in the privileged context (all reads/writes
+  # are allowed)
+  #
+  # IMPLEMENTATION: the first _checkShallow call takes the lock and
+  # applies policies, while the subsequent ones instantly return ALLOW
+  # ----------------------------------------------------------------
+  _checkShallow = (op) ->
+    return _allowOutcome if _inACLcheck.get(false)
+    _inACLcheck.set(true)
+    try
+      return _findAndCheckPolicies(op)
+    finally
+      _inACLcheck.set(false)
+
+  # -------------------------------------------------------------------
+  # Policy code executes in the client context (for all reads/writes
+  # policies are recursively checked/applied).  Only when an operation
+  # is attempted recursively, to avoid endless looping, _checkDeep
+  # returns ALLOW.
+  #
+  # IMPLEMENTATION: a stack of operations is maintained.  If an
+  # operation is already found on the stack, ALLOW is returned to
+  # avoid infinite recursion.
+  # -------------------------------------------------------------------
+  _checkDeep = (op) ->
+    opStr = op.toString();
+
+    # check cache first.
+    cached = _cacheGet(op)
+    if cached
+      poly_sdebug "$$$ returning from cache for op #{op}; #deps #{cached.deps.length}"
+      d.depend() for d in cached.deps
+      return cached.ans
+
+    # if already checking policies for the same op, return ALLOW to
+    # break infinite recursion
+    if _stackHas(op)
+      poly_sdebug "*** ACL stack contains op #{op} ---> allowing"
+      return _allowOutcome 
+
+    poly_sdebug "+++ pushing #{op} to ACL stack"
+    _stackPush(op)
+    _printStack()
+    deps = []
+    depLn = (dep) -> deps.push(dep)
+    Sunny.Deps.pushDepLn(depLn)
+    try
+      ans =  _findAndCheckPolicies(op)
+      _cacheSet(op, {ans: ans, deps: deps})
+      return ans
+    finally
+      Sunny.Deps.popDepLn(depLn)
+      _stackPop(op)
+      poly_sdebug "--- popped #{op} from the ACL stack"
+      Sunny.ACL.invalidateCache() if _stackEmpty()
+
+
   lastCheck: () ->
     arr = _checkHistory.get([])
     if arr.length == 0
@@ -1788,7 +1858,7 @@ Sunny.ACL = do ->
 
   applicablePolicies: (op) -> filter Sunny.Meta.policies, (p) -> p.applies(op)
 
-  invalidateCache:    () -> _aclCheckCache.set({}); 
+  invalidateCache:    () -> _aclCache.set(_emptyCache()); 
 
   check_create: (sig)               -> Sunny.ACL.check(new OpCreate(sig))
   check_find:   (sig, records)      -> Sunny.ACL.check(new OpFind(sig, records))
@@ -1798,33 +1868,11 @@ Sunny.ACL = do ->
   check_push:   (obj, fldName, val) -> Sunny.ACL.check(new OpArrPush(obj, fldName, val))
   check_pull:   (obj, fldName, val) -> Sunny.ACL.check(new OpArrPull(obj, fldName, val))
   check:        (op) ->
-    outcome = do ->
-      return _allowOutcome unless Sunny.myClient() # executing on behalf of Server -> ok
-      return _allowOutcome if _inACLcheck.get(false)
-      _inACLcheck.set(true)
-      # opStr = op.toString();
-      # stack = _aclCheckStack.get()
-      # cache = _aclCheckCache.get()
-      # cached = cache[opStr]
-      # if cached
-      #   poly_sdebug "-------------- returning from cache for op #{op}: #{cached}"
-      #   return cached 
-      # if stack[op.toString()]
-      #   poly_sdebug "********** ACL stack contains op #{op} ---> allowing"
-      #   return _allowOutcome 
-      # stack[op.toString()] = true
-      # poly_sdebug "@@@@@@@@ pushing #{op} to ACL stack"
-      # _printStack(stack)
-      try
-        ans = _findAndCheckPolicies(op)
-        # cache[opStr] = ans
-        ans
-      finally
-        _inACLcheck.set(false)
-        # delete stack[op.toString()]
-        # poly_sdebug "@@@@@@@@ popped #{op} from the ACL stack"
-        # Sunny.ACL.invalidateCache() if Object.keys(stack).length == 0
-
+    return _allowOutcome unless Sunny.myClient() # executing on behalf of Server --> ok
+    outcome = if Sunny.Conf.deepPolicyChecking
+                _checkDeep(op)
+              else
+                _checkShallow(op)
     _checkHistory.push op: op, outcome: outcome
     return outcome
 
@@ -2102,19 +2150,19 @@ wrapPublisher = (pub, kls) ->
   pubObjs = kls.__meta__._getPubObjs(connId)
 
   pub.sunny_added = (name, id, flds) ->
-    sdebug ">>>> #{name}(#{id}) added"
+    sdebug ">>>> publishing >>>> #{name}(#{id}) added"
     pubObjs[id] = id
     pub.added(name, id, flds)
 
   pub.sunny_removed = (name, id) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> #{name}(#{id}) removed"
+      sdebug ">>>> publishing >>>> #{name}(#{id}) removed"
       delete pubObjs[id]
       pub.removed(name, id)
 
   pub.sunny_changed = (name, id, flds) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> #{name}(#{id}) changed: #{Object.keys(flds).join(', ')}"
+      sdebug ">>>> publishing >>>> #{name}(#{id}) changed: #{Object.keys(flds).join(', ')}"
       pub.changed(name, id, flds)
 
   pub
@@ -2147,7 +2195,7 @@ Meteor.startup () ->
         handle = col.find({}).observeChanges
           added: (id, flds) ->
             return if isInit
-            sdebug "@@@@@@@@@@@ #{klsName}(#{id}) added"
+            sdebug "~~~~~~~~~~~~ #{klsName}(#{id}) added ~~~~~~~~~~~~"
             Sunny.Queue.runAsInvocation "mongo_added", () -> meta.__findDep__.changed()
             foreachpub 'added', kls, id, (connId, pub) ->
               findComp = kls.__meta__._getSigFindComp(connId)
@@ -2155,13 +2203,13 @@ Meteor.startup () ->
               # kls._serRecordsForClient(connId, "add", [kls.new(_id: id)])
           removed: (id) ->
             return if isInit
-            sdebug "@@@@@@@@@@@ #{klsName}(#{id}) removed"
+            sdebug "~~~~~~~~~~~~ #{klsName}(#{id}) removed ~~~~~~~~~~~~"
             meta._deleteObjDeps()
             Sunny.Queue.runAsInvocation "mongo_removed", () -> meta.__findDep__.changed()
             foreachpub 'removed', kls, id, (connId, pub) -> pub.sunny_removed klsName, id
           changed: (id, flds) ->
             return if isInit
-            sdebug "@@@@@@@@@@@ #{klsName}(#{id}).#{Object.keys(flds).join(',')} changed"
+            sdebug "~~~~~~~~~~~~ #{klsName}(#{id}).#{Object.keys(flds).join(',')} changed ~~~~~~~~~~~~"
             Sunny.Queue.runAsInvocation "mongo_changed", () ->
               meta.__findDep__.changed()
               meta._getObjFldDeps(id, fname).changed() for fname, fval of flds
