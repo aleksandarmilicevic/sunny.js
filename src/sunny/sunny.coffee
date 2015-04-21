@@ -1295,6 +1295,7 @@ Sunny.Model = do ->
         @argNames.push(pn)
         this[pn] = pv
 
+    isReadOnly: ()        -> @name == "read" || @name == "find"
     args: ()              -> this[argName] for argName in @argNames
     argsHashOp: ()        -> this.argsHash("op")
     argsHash: (opNameKey) ->
@@ -1694,6 +1695,10 @@ Sunny.Dsl = do ->
     _mConn: Obj
     connId: () -> this._mConn?.id
 
+    _getACL:     () -> this.__sunny_acl__ ?= {}  # if Meteor.isServer then this.__sunny_acl__ ?= {} else  Sunny.ACL.__sunny_acl__ ?= {}
+    getACLStack: () -> this._getACL().stack ?= []
+    getACLCache: () -> this._getACL().cache ?= []
+    
   SunnyServer: createMachineKls class SunnyServer extends Machine
     onlineClients: set SunnyClient
 
@@ -1713,20 +1718,34 @@ Sunny.ACL = do ->
 
   # ----------------------------------------------------------------
   # implementation of stack and cache using arrays
-  _emptyCache = ()            -> []
-  _cacheGet   = (k)    -> findFirst(_aclCache.get(), (e) -> e.key.equals(k))?.val
-  _cacheSet   = (k, v) -> _aclCache.push({key: k, val: v})
+  _emptyCache = ()     -> []
+  _clearCache = (c)    -> c.splice(0, c.length)
+  _cacheGet   = (k)    -> findFirst(_aclCache(), (e) -> e.key.equals(k))?.val
+  _cacheSet   = (k, v) -> _aclCache().push({key: k, val: v})
 
-  _stackPush  = (e)    -> _aclStack.push(e)
-  _stackPop   = (e)    -> ans = _aclStack.pop(); assert ans == e, "ACL stack pop out of order: #{ans} != #{e}"; ans
-  _stackHas   = (e)    -> contains _aclStack.get(), e
+  _stackPush  = (e)    -> _aclStack().push(e)
+  _stackPop   = (e)    -> ans = _aclStack().pop(); assert ans == e, "ACL stack pop out of order: #{ans} != #{e}"; ans
+  _stackHas   = (e)    -> contains _aclStack(), e
   _emptyStack = ()     -> []
-  _stackEmpty = ()     -> _aclStack.get().length == 0
-  _printStack = ()     -> poly_sdebug "         #{op}" for op in _aclStack.get()
-
-  _aclStack = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclStack", _emptyStack())
-  _aclCache = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCache", _emptyCache())
+  _stackEmpty = ()     -> _aclStack().length == 0
+  _printStack = ()     -> poly_sdebug "         #{op}" for op in _aclStack()
   # ----------------------------------------------------------------
+
+  _aclStack = () -> Sunny.currClient()?.getACLStack() || _emptyStack()
+  _aclCache = () -> Sunny.currClient()?.getACLCache() || _emptyCache()    
+
+  # _aclStacks = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclStacks", {})
+  # _aclCaches = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCaches", {})
+
+  # _aclStackCacheForCurrClient = (what, defaultVal) ->
+  #   clientId = Sunny.currClient()?.id()
+  #   assert clientId, "checking policies for null client"
+  #   fiberVar = if what == "stack" then _aclStacks.get() else _aclCaches.get()
+  #   ans = fiberVar[clientId] ?= defaultVal
+  #   return ans
+
+  # _aclStack = () -> _aclStackCacheForCurrClient("stack", _emptyStack())
+  # _aclCache = () -> _aclStackCacheForCurrClient("cache", _emptyCache())
 
   _accessDeniedListeners = []
   _allowByDefault = true
@@ -1744,7 +1763,19 @@ Sunny.ACL = do ->
 
   _defaultOutcome = () ->
     if Sunny.ACL.isAllowByDefault() then _allowByDefaultOutcome else _denyByDefaultOutcome
-        
+
+  # ----------------------------------------------------------------
+  # Discover and apply all applicable policies. 
+  #
+  #  - if no applicable policies are found, _defaultOutcome() is
+  #    returned
+  # 
+  #  - restricted values are propagated through policies so that each
+  #    can apply further restrictions
+  # 
+  #  - if a policy returns a new value, it is wrapped like any other
+  #    field value (the same way the original field value was wrapped)
+  # ----------------------------------------------------------------
   _findAndCheckPolicies = (op) ->
     poli = Sunny.ACL.applicablePolicies(op)
     if poli.length == 0
@@ -1805,11 +1836,8 @@ Sunny.ACL = do ->
   # avoid infinite recursion.
   # -------------------------------------------------------------------
   _checkDeep = (op) ->
-    opStr = op.toString();
-
     # check cache first.
-    cached = _cacheGet(op)
-    if cached
+    if cached = _cacheGet(op)
       poly_sdebug "$$$ returning from cache for op #{op}; #deps #{cached.deps.length}"
       d.depend() for d in cached.deps
       return cached.ans
@@ -1858,7 +1886,7 @@ Sunny.ACL = do ->
 
   applicablePolicies: (op) -> filter Sunny.Meta.policies, (p) -> p.applies(op)
 
-  invalidateCache:    () -> _aclCache.set(_emptyCache()); 
+  invalidateCache:    () -> _clearCache(_aclCache())
 
   check_create: (sig)               -> Sunny.ACL.check(new OpCreate(sig))
   check_find:   (sig, records)      -> Sunny.ACL.check(new OpFind(sig, records))
@@ -1868,8 +1896,12 @@ Sunny.ACL = do ->
   check_push:   (obj, fldName, val) -> Sunny.ACL.check(new OpArrPush(obj, fldName, val))
   check_pull:   (obj, fldName, val) -> Sunny.ACL.check(new OpArrPull(obj, fldName, val))
   check:        (op) ->
-    return _allowOutcome unless Sunny.myClient() # executing on behalf of Server --> ok
-    outcome = if Sunny.Conf.deepPolicyChecking
+    # if the Server is doing deep checking, then reads on Clients are always allowed
+    return _allowOutcome if Sunny.Conf.deepPolicyChecking && Meteor.isClient && op.isReadOnly()
+    # allow everything if executing on behalf of Server (in privileged context)
+    return _allowOutcome unless Sunny.myClient()
+    # never use deep checking on Clients
+    outcome = if Meteor.isServer && Sunny.Conf.deepPolicyChecking
                 _checkDeep(op)
               else
                 _checkShallow(op)
@@ -2067,7 +2099,6 @@ Sunny.Queue = do ->
       try
         # tx.start()
         onClientBehalf connId, () ->
-          Sunny.ACL.invalidateCache()
           opFn.apply(self, args)
         # tx.commit()
       catch err
