@@ -341,3 +341,7 @@ a.event-name {
   padding-top: 3px;
   padding-bottom: 3px;
 }
+
+li.selected {
+  font-weight: bold;
+}

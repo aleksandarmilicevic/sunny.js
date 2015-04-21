@@ -56,7 +56,7 @@
   <h3>Events</h3>
   <ul class="events">
   {{#each Party}}
-    <li>
+    <li class="{{#if isSelectedEvent this}}selected{{/if}}">
     <a class="event-name" {{SelectEvent party=this}} {{sunny_trigger}}>{{name}}</a>
     </li>
   {{/each}}

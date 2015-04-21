@@ -129,8 +129,10 @@ policy Party,
   # client is a guest but party hasn't been finalized
   _precondition: (party) ->
     u = this.client?.user
-    (!party.hosts.contains(u) && !party.guests.contains(u)) or
-    (party.guests.contains(this.client?.user) && !party.finalized)
+    hosts = party.hosts
+    guests = party.guests
+    (!hosts.contains(u) && !guests.contains(u)) or
+    (guests.contains(u) && !party.finalized)
      
   read: 
     "name":     -> return this.allow("<private party>")
