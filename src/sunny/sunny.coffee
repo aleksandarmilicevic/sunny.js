@@ -363,6 +363,7 @@ Sunny.Log = do ->
   _styles = [(x) -> x]
   _bgstyles = [(x) -> x]
   _errStyle = (x) -> x
+  _boldStyle = (x) -> x
   _connIdIdx = {}
   _connIdxCnt = 0
   _indent = new Sunny.Utils.FiberLocalVar("Sunny.Log.indent", "")
@@ -373,14 +374,17 @@ Sunny.Log = do ->
       _styles = [clc.red, clc.green, clc.yellow, clc.cyanBright, clc.magenta]
       _bgstyles = [clc.bgBlackBright, clc.bgGreen, clc.bgBlue, clc.bgCyan, clc.bgMagenta]
       _errStyle = clc.red.bold.bgYellowBright
-
+      _boldStyle = clc.bold
+    
   _colorFiber = (msg) ->
     idx = Sunny.Utils.fiberId()
     fiberIdTxt = _bgstyles[idx % _bgstyles.length](" (#{idx}) ")
-    connId = Sunny._currConnId.get() || 0
-    connIdx = _connIdIdx[connId] ?= _connIdxCnt++
-    msgTxt = _styles[connIdx % _styles.length](_indent.get("") + msg)
+    cId = Sunny.myClient()?.id() #  Sunny._currConnId.get() || 0
+    cIdx = _connIdIdx[cId] ?= _connIdxCnt++
+    msgTxt = _styles[cIdx % _styles.length](_indent.get("") + msg)
     console.log(fiberIdTxt + msgTxt)
+
+  bold: (msg) -> _boldStyle(msg)
 
   indent: (fn) ->
     try
@@ -1275,7 +1279,7 @@ Sunny.Model = do ->
     hasValue:     () -> @value != undefined
     toString:     () ->
       if this.isDenied() then "Denied"
-      else if this.hasValue() then "Restricted"
+      else if this.hasValue() then "Restricted(#{@value})"
       else "Allowed"
     returnResult: (allowedVal, deniedVal) ->
       if @allowed != true
@@ -1312,11 +1316,7 @@ Sunny.Model = do ->
     equals: (other) ->
       return false unless other
       return false unless this.constructor == other.constructor
-      return false unless this.name == other.name
-      return false unless this.sig == other.sig
-      return false unless _equalsFn(this.obj)(other.obj)
-      return false unless this.fldName == other.fldName
-      return true
+      return this.toString() == other.toString()
 
   class OpCreate extends Op
     constructor: (sig) -> super("create", sig: sig)
@@ -1694,10 +1694,6 @@ Sunny.Dsl = do ->
   SunnyClient: createMachineKls class SunnyClient extends Machine
     _mConn: Obj
     connId: () -> this._mConn?.id
-
-    _getACL:     () -> this.__sunny_acl__ ?= {}  # if Meteor.isServer then this.__sunny_acl__ ?= {} else  Sunny.ACL.__sunny_acl__ ?= {}
-    getACLStack: () -> this._getACL().stack ?= []
-    getACLCache: () -> this._getACL().cache ?= []
     
   SunnyServer: createMachineKls class SunnyServer extends Machine
     onlineClients: set SunnyClient
@@ -1713,39 +1709,41 @@ Sunny.Dsl = do ->
 #   Access Control Stuff
 # ====================================================================================
 Sunny.ACL = do ->
-  _checkHistory = new Sunny.Utils.FiberLocalVar("Sunny.ACL.checkHistory")
-  _inACLcheck = new Sunny.Utils.FiberLocalVar("Sunny.ACL._inACLcheck")
-
   # ----------------------------------------------------------------
   # implementation of stack and cache using arrays
   _emptyCache = ()     -> []
   _clearCache = (c)    -> c.splice(0, c.length)
-  _cacheGet   = (k)    -> findFirst(_aclCache(), (e) -> e.key.equals(k))?.val
-  _cacheSet   = (k, v) -> _aclCache().push({key: k, val: v})
+  _cacheGet   = (k)    -> ans = findFirst(_aclCache(), (e) -> e.key.equals(k))?.val
+  _cacheSet   = (k, v) ->
+    msg = Sunny.Log.bold("CACHE SET: #{k}: ans = #{v.ans}, #deps = #{v.deps.length}")
+    poly_sdebug "                                          #{msg}"
+    _aclCache().push({key: k, val: v})
 
-  _stackPush  = (e)    -> _aclStack().push(e)
-  _stackPop   = (e)    -> ans = _aclStack().pop(); assert ans == e, "ACL stack pop out of order: #{ans} != #{e}"; ans
-  _stackHas   = (e)    -> contains _aclStack(), e
+  _stackPush  = (e)    -> _stack.push(e)
+  _stackPop   = (e)    -> a = _stack.pop(); assert a == e, "ACL stack pop out of order: #{a} != #{e}"; a
+  _stackHas   = (e)    -> contains _stack.get(), e
   _emptyStack = ()     -> []
-  _stackEmpty = ()     -> _aclStack().length == 0
-  _printStack = ()     -> poly_sdebug "         #{op}" for op in _aclStack()
+  _stackEmpty = ()     -> _stack.get().length == 0
+  _printStack = ()     -> poly_sdebug "         #{op}" for op in _stack.get()
   # ----------------------------------------------------------------
+    
+  _checkHistory = new Sunny.Utils.FiberLocalVar("Sunny.ACL.checkHistory")
+  _inACLcheck = new Sunny.Utils.FiberLocalVar("Sunny.ACL._inACLcheck")
+  _stack = new Sunny.Utils.FiberLocalVar("Sunny.ACL._stack", _emptyStack())
+  _caches = {}
 
-  _aclStack = () -> Sunny.currClient()?.getACLStack() || _emptyStack()
-  _aclCache = () -> Sunny.currClient()?.getACLCache() || _emptyCache()    
+  _forClnt = (hash, emptyVal) ->
+    clnt = Sunny.myClient()
+    id = clnt.id() if clnt
+    return emptyVal unless id
+    hash[id] ?= emptyVal
 
-  # _aclStacks = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclStacks", {})
-  # _aclCaches = new Sunny.Utils.FiberLocalVar("Sunny.ACL._aclCaches", {})
+  # _forClnt = (hash, emptyVal) ->
+  #   clntId = Sunny._currConnId.get()
+  #   return emptyVal unless clntId
+  #   hash[clntId] ?= emptyVal
 
-  # _aclStackCacheForCurrClient = (what, defaultVal) ->
-  #   clientId = Sunny.currClient()?.id()
-  #   assert clientId, "checking policies for null client"
-  #   fiberVar = if what == "stack" then _aclStacks.get() else _aclCaches.get()
-  #   ans = fiberVar[clientId] ?= defaultVal
-  #   return ans
-
-  # _aclStack = () -> _aclStackCacheForCurrClient("stack", _emptyStack())
-  # _aclCache = () -> _aclStackCacheForCurrClient("cache", _emptyCache())
+  _aclCache = () -> _forClnt(_caches, _emptyCache())
 
   _accessDeniedListeners = []
   _allowByDefault = true
@@ -1837,11 +1835,12 @@ Sunny.ACL = do ->
   # -------------------------------------------------------------------
   _checkDeep = (op) ->
     # check cache first.
-    if cached = _cacheGet(op)
-      poly_sdebug "$$$ returning from cache for op #{op}; #deps #{cached.deps.length}"
-      d.depend() for d in cached.deps
-      return cached.ans
-
+    if op.isReadOnly()
+      if cached = _cacheGet(op)
+        poly_sdebug "                                          CACHE HIT for op #{op}; val = #{cached.ans}; #deps #{cached.deps.length}"
+        d.depend() for d in cached.deps
+        return cached.ans
+    
     # if already checking policies for the same op, return ALLOW to
     # break infinite recursion
     if _stackHas(op)
@@ -1849,6 +1848,7 @@ Sunny.ACL = do ->
       return _allowOutcome 
 
     poly_sdebug "+++ pushing #{op} to ACL stack"
+    opstr = op.toString()
     _stackPush(op)
     _printStack()
     deps = []
@@ -1856,13 +1856,13 @@ Sunny.ACL = do ->
     Sunny.Deps.pushDepLn(depLn)
     try
       ans =  _findAndCheckPolicies(op)
-      _cacheSet(op, {ans: ans, deps: deps})
+      _cacheSet(op, {ans: ans, deps: deps}) if op.isReadOnly()
       return ans
     finally
       Sunny.Deps.popDepLn(depLn)
+      assert opstr == op.toString(), "op changed in the middle of the call"
       _stackPop(op)
       poly_sdebug "--- popped #{op} from the ACL stack"
-      Sunny.ACL.invalidateCache() if _stackEmpty()
 
 
   lastCheck: () ->
@@ -1886,7 +1886,7 @@ Sunny.ACL = do ->
 
   applicablePolicies: (op) -> filter Sunny.Meta.policies, (p) -> p.applies(op)
 
-  invalidateCache:    () -> _clearCache(_aclCache())
+  invalidateCache:    () -> sdebug("```````````` INVALIDATING CACHE ''''''''''''''''"); _clearCache(_aclCache())
 
   check_create: (sig)               -> Sunny.ACL.check(new OpCreate(sig))
   check_find:   (sig, records)      -> Sunny.ACL.check(new OpFind(sig, records))
@@ -2181,19 +2181,19 @@ wrapPublisher = (pub, kls) ->
   pubObjs = kls.__meta__._getPubObjs(connId)
 
   pub.sunny_added = (name, id, flds) ->
-    sdebug ">>>> publishing >>>> #{name}(#{id}) added"
+    sdebug ">>>>>>>>>>>>>>>>>>>>>>>> publishing to #{Sunny.Log.bold pub.connection.id} >>>> #{name}(#{id}) added"
     pubObjs[id] = id
     pub.added(name, id, flds)
 
   pub.sunny_removed = (name, id) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> publishing >>>> #{name}(#{id}) removed"
+      sdebug ">>>>>>>>>>>>>>>>>>>>>>>> publishing to #{Sunny.Log.bold pub.connection.id} >>>> #{name}(#{id}) removed"
       delete pubObjs[id]
       pub.removed(name, id)
 
   pub.sunny_changed = (name, id, flds) ->
     if pubObjs.hasOwnProperty(id)
-      sdebug ">>>> publishing >>>> #{name}(#{id}) changed: #{Object.keys(flds).join(', ')}"
+      sdebug ">>>>>>>>>>>>>>>>>>>>>>>> publishing to #{Sunny.Log.bold pub.connection.id} >>>> #{name}(#{id}) changed: #{Object.keys(flds).join(', ')}"
       pub.changed(name, id, flds)
 
   pub
@@ -2227,20 +2227,29 @@ Meteor.startup () ->
           added: (id, flds) ->
             return if isInit
             sdebug "~~~~~~~~~~~~ #{klsName}(#{id}) added ~~~~~~~~~~~~"
+            foreachpub 'added', kls, id, (connId, pub) ->
+              onClientBehalf connId, () -> Sunny.ACL.invalidateCache()
             Sunny.Queue.runAsInvocation "mongo_added", () -> meta.__findDep__.changed()
             foreachpub 'added', kls, id, (connId, pub) ->
               findComp = kls.__meta__._getSigFindComp(connId)
               findComp.addRecords([kls.new(_id: id)])
               # kls._serRecordsForClient(connId, "add", [kls.new(_id: id)])
+                
           removed: (id) ->
             return if isInit
             sdebug "~~~~~~~~~~~~ #{klsName}(#{id}) removed ~~~~~~~~~~~~"
+            foreachpub 'removed', kls, id, (connId, pub) ->
+              onClientBehalf connId, () -> Sunny.ACL.invalidateCache()
             meta._deleteObjDeps()
             Sunny.Queue.runAsInvocation "mongo_removed", () -> meta.__findDep__.changed()
-            foreachpub 'removed', kls, id, (connId, pub) -> pub.sunny_removed klsName, id
+            foreachpub 'removed', kls, id, (connId, pub) ->
+              pub.sunny_removed klsName, id
+            
           changed: (id, flds) ->
             return if isInit
             sdebug "~~~~~~~~~~~~ #{klsName}(#{id}).#{Object.keys(flds).join(',')} changed ~~~~~~~~~~~~"
+            foreachpub 'changed', kls, id, (connId, pub) ->
+              onClientBehalf connId, () -> Sunny.ACL.invalidateCache()            
             Sunny.Queue.runAsInvocation "mongo_changed", () ->
               meta.__findDep__.changed()
               meta._getObjFldDeps(id, fname).changed() for fname, fval of flds

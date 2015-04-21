@@ -10,15 +10,16 @@ if Meteor.isClient
         placement: "bottom"
         display: false
         url:   (params) ->
+                 $e = $(this)
                  d = new jQuery.Deferred()
                  sigName = $elem.attr("sunny-sig")
                  sig = Sunny.Meta.findSig sigName
                  return d.reject("sig #{sigName} not found") unless sig
   
-                 obj = sig.findOne(params.pk)
+                 obj = sig.findOne($e.attr("sunny-atom-id"))
                  return d.reject("object does not exist any more") unless obj
   
-                 obj[params.name] = params.value
+                 obj[$e.attr("sunny-fld-name")] = params.value
                  writeOutcome = Sunny.ACL.lastWriteOutcome()
                  if writeOutcome?.isDenied()
                    return d.reject(writeOutcome.denyReason || "not allowed")
