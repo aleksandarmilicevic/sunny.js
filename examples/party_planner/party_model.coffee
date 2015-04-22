@@ -124,42 +124,45 @@ policy User,
   update:
     "*": (user, val) -> return this.deny("can't edit other people's data")
 
-policy Party,
-  # client user is neither a host nor a guest OR
-  # client is a guest but party hasn't been finalized
-  _precondition: (party) ->
-    u = this.client?.user
-    hosts = party.hosts
-    guests = party.guests
-    (!hosts.contains(u) && !guests.contains(u)) or
-    (guests.contains(u) && !party.finalized)
-     
-  read: 
-    "name":     -> return this.allow("<private party>")
-    "location": -> return this.allow("<secret location>")
-    "time":     -> return this.allow("<unknown time>")
-    "hosts":    -> return this.allow([])
-    "guests":   -> return this.allow([])
-
 # policy Party,
-#   # client user is neither a host nor a guest ==> can't see name, location, time
+#   # client user is neither a host nor a guest OR
+#   # client is a guest but party hasn't been finalized
 #   _precondition: (party) ->
 #     u = this.client?.user
-#     !party.hosts.contains(u) && !party.guests.contains(u)
+#     hosts = party.hosts
+#     guests = party.guests
+#     (!hosts.contains(u) && !guests.contains(u)) or
+#     (guests.contains(u) && !party.finalized)
      
 #   read: 
 #     "name":     -> return this.allow("<private party>")
 #     "location": -> return this.allow("<secret location>")
 #     "time":     -> return this.allow("<unknown time>")
-
-# policy Party,
-#   # client user is not a host and the party hasn't been finalized
-#   _precondition: (party) ->
-#     !party.hosts.contains(this.client?.user) && !party.finalized
-     
-#   read:
 #     "hosts":    -> return this.allow([])
 #     "guests":   -> return this.allow([])
+
+policy Party,
+  # client user is neither a host nor a guest ==> can't see name, location, time
+  _precondition: (party) ->
+    u = this.client?.user
+    !party.hosts.contains(u) && !party.guests.contains(u)
+     
+  read: 
+    "name":      -> return this.allow("<private party>")
+    "location":  -> return this.allow("<secret location>")
+    "time":      -> return this.allow("<unknown time>")
+    "finalized:" -> return false
+    "hosts":     -> return this.allow([])
+    "guests":    -> return this.allow([])
+    
+policy Party,
+  # client user is not a host and the party hasn't been finalized
+  _precondition: (party) ->
+    !party.hosts.contains(this.client?.user) && !party.finalized
+     
+  read:
+    "hosts":    -> return this.allow([])
+    "guests":   -> return this.allow([])
 
 policy Party,
   # client user is not a host
