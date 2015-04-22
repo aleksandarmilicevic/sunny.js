@@ -28,20 +28,22 @@ Sunny.myServer = () ->
   #   Sunny._myServer = Sunny.Meta.serverKls().findOne({}) # has to be only one
   #   return Sunny._myServer
 
+Sunny.currPrincipal = () -> Sunny._currPrincipal.get()
+
 Sunny.myClient = () ->
   if Meteor.isServer
-    return Sunny._currClient.get()
+    return Sunny.currPrincipal()
   else if not Sunny.myServer()
     return null
   else if not Meteor.status().connected or not Meteor.connection
     return null
   else
+    # this is client stuff only
     connId = Meteor.connection._lastSessionId
     myClient = Sunny.Meta.clientKls().findOne("_mConn.id": connId);
+    Sunny._currPrincipal.set(myClient)
     return myClient
-
-Sunny.currClient = Sunny.myClient
-
+    
 Sunny.methods = (hash) ->
   mthds = {}
   for name, fn of hash
@@ -100,6 +102,7 @@ Sunny.Fun = do ->
     return null
 
   findLast: (col, cb) ->
+    return null unless col && col.length > 0
     for i in [col.length-1 .. 0]
       e = col[i]
       return e if cb(e)
@@ -175,13 +178,21 @@ getSunnyClient = (conn) ->
   else
     Sunny.Meta.clientKls().findOne({"_mConn.id": conn})
 
+# onBehalf = (fn, clnt) ->
+#   old = Sunny._currClient.get()
+#   try
+#     Sunny._currClient.set(clnt)
+#     fn.apply(null)
+#   finally
+#     Sunny._currClient.set(old)
+
 onBehalf = (fn, clnt) ->
-  old = Sunny._currClient.get()
+  old = Sunny._currPrincipal.get()
   try
-    Sunny._currClient.set(clnt)
+    Sunny._currPrincipal.set(clnt)
     fn.apply(null)
   finally
-    Sunny._currClient.set(old)
+    Sunny._currPrincipal.set(old)
 
 onClientBehalf = (conn, fn) ->
   if not conn
@@ -1783,7 +1794,7 @@ Sunny.ACL = do ->
       currVal = op.val
       currOutcome = null
       for p in poli
-        poly_sdebug "  checking policy on behalf of #{Sunny.currClient()}"
+        poly_sdebug "  checking policy on behalf of #{Sunny.currPrincipal()}"
         op.val = currVal
         outcome = p.check(op)
         if outcome.isDenied()
@@ -1899,7 +1910,7 @@ Sunny.ACL = do ->
     # if the Server is doing deep checking, then reads on Clients are always allowed
     return _allowOutcome if Sunny.Conf.deepPolicyChecking && Meteor.isClient && op.isReadOnly()
     # allow everything if executing on behalf of Server (in privileged context)
-    return _allowOutcome unless Sunny.myClient()
+    return _allowOutcome unless Sunny.currPrincipal()
     # never use deep checking on Clients
     outcome = if Meteor.isServer && Sunny.Conf.deepPolicyChecking
                 _checkDeep(op)
@@ -2293,8 +2304,9 @@ Meteor.startup () ->
 #   Initializations
 # ====================================================================================
 
-Sunny._currClient = new Sunny.Utils.FiberLocalVar("Sunny.currClient")
-Sunny._currConnId = new Sunny.Utils.FiberLocalVar("Sunny.currConnId")
+Sunny._currClient    = new Sunny.Utils.FiberLocalVar("Sunny.currClient")
+Sunny._currPrincipal = new Sunny.Utils.FiberLocalVar("Sunny.currPrincipal")
+Sunny._currConnId    = new Sunny.Utils.FiberLocalVar("Sunny.currConnId")
 
 # # ----------------------------------------------------------
 # # tx initialization
