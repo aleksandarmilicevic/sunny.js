@@ -57,6 +57,7 @@
   <ul class="events">
   {{#each Party}}
     <li class="{{#if isSelectedEvent this}}selected{{/if}}">
+    <i class="icon-remove" {{Destroy obj=this}} {{sunny_trigger}}></i>&nbsp;
     <a class="event-name" {{SelectEvent party=this}} {{sunny_trigger}}>{{name}}</a>
     </li>
   {{/each}}

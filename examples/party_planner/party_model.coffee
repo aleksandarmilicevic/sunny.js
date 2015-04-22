@@ -140,7 +140,7 @@ policy Party,
     "time":     -> return this.allow("<unknown time>")
     "hosts":    -> return this.allow([])
     "guests":   -> return this.allow([])
-     
+
 # policy Party,
 #   # client user is neither a host nor a guest ==> can't see name, location, time
 #   _precondition: (party) ->
@@ -175,6 +175,8 @@ policy Party,
     
   update:
     "*": -> return this.deny("cannot update event which you don't host")
+
+  delete: -> return this.deny("cannot delete event which you don't host")
 
 # ------------------------------
 # stdlib

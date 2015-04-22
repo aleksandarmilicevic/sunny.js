@@ -345,3 +345,7 @@ a.event-name {
 li.selected {
   font-weight: bold;
 }
+
+ul.events i.icon-remove {
+  cursor: pointer;
+}
