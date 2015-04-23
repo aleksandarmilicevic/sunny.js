@@ -1,0 +1,368 @@
+.container {
+    width: 650px !important;
+}
+.inlineb{
+    display: inline-block;
+}
+.top{
+    vertical-align: top;
+}
+.album-main{
+    width: 74%;
+    border-radius: 10px;
+    margin: 20px;
+    background-color: #8db9df;
+}
+#online-users{
+    width: 20%;
+    border-radius: 10px;
+    margin: 10px;
+    margin-top: 20px;
+    background-color: #f9f381;
+    text-align: center;
+}
+.create-button{
+    display: block;
+}
+.photo-list{
+    color: black;
+}
+.albumHeader{
+    width: 80%;
+    margin-left: 20px;
+}
+
+.Album {
+    border: 1px solid;
+    margin: 2%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 5px;
+    display: block;
+    width: 95%;
+    height: 400px;
+    vertical-align: top;
+    overflow-y: auto; 
+
+}
+
+.Album .panel-heading {
+    padding: 3px;
+}
+
+.Album .panel-title {
+    padding-left: 5px;
+}
+
+.Album .panel-title a {
+    border-bottom-color: white;
+}
+
+.Album .panel-title a:hover {
+    border-bottom-color: white;
+    color: #bce8f1;
+}
+#album-container{
+    width: 100%;
+}
+
+.addPhotoForm{
+    background-color: yellow;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+.addPhotoForm input{
+    width: 250px;
+    height: 35px;
+}
+
+.photo-thumbnail{
+    width: 204px;
+    background-color: white;
+    vertical-align: top;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 5px;
+    color: black;
+}
+.photo-thumbnail img{
+    height: 95px;
+}
+.photo-exit{
+
+}
+.photo-image{
+
+}
+.photo-title{
+    font-size: 18px;
+    font-weight: bold;
+}
+.photo-title div{
+    display: inline-block;
+}
+.photo-linkedit{
+    font-size: 15px;
+}
+.photo-linkedit div{
+    display: inline-block;
+}
+
+.phototagcontainer{
+    width: 100%;
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+
+.phototag{
+    border-radius: 5px;
+    background-color: #906097;
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-top: 1px;
+    margin-bottom: 1px;
+}
+
+.AddTagForm .form-group{
+    width: 55%;
+}
+
+.AddTagForm input{
+    width: 100%;
+    height: 33px;
+    display: inline-block;
+}
+.AddTagForm button{
+    display: inline-block;
+}
+
+.modal{
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+#album-modal{
+    width: 950px;
+}
+.frame {
+  border: 1px solid #dddddd;
+}
+
+.frame-right {
+  border-right: 1px solid #dddddd;
+}
+
+.sec-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  margin-top: 5px;
+}
+
+.list-group-item.me {
+  background-color: #bce8f1;
+  z-index: 2;
+  border-color: #9ac6c9;
+}
+
+.navbar-inverse .User {
+    margin-top: 10px;
+    color: white;
+}
+
+.title-bar a {
+    padding: 5px;
+    color: #f9f381;
+    cursor: pointer;
+}
+
+.title-bar a:hover {
+    color: yellow;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.attach-left {
+    width: 180px;
+    position: relative;
+    left: -195px;
+    top: 4px;
+}
+
+a#brand {
+    font-size: 14pt;
+}
+
+
+.empty-col {
+    width: 100%;
+    text-align: center;
+}
+
+.user-name-status {
+    display: inline-block;
+    vertical-align: middle;
+    width: 90px;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    margin: 0px; 
+    padding: 0px;
+    margin-right: 5pt;
+    margin-left: -5pt;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.avatar img {
+    height: 48px;
+    margin-left: auto;
+    margin-right: auto; 
+    display: block;
+}
+
+.online-users .list-group-item {
+    margin: 0px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.online-users h4 {
+    margin: 0px;
+}
+
+.User.status {
+  padding-left: 15px;
+}
+
+
+
+.Msg {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+
+button.Event {
+    margin: 0px;
+    padding: 3px;
+}
+
+button.Event span.Event {
+    padding: 0px;
+    margin: 2px;
+    margin-top: -2px;
+}
+
+
+div#login-div {
+   width: 300px;
+   margin-left: auto;
+   margin-right: auto;
+}
+
+
+div.event {
+   border: 1px solid black;
+   width: 300px;
+   margin: 5px;
+   padding: 5px;
+   float: left;
+}
+
+div.name {
+    font-weight: bold;
+    text-align: center;
+    background-color: #CCCCCC;
+}
+
+.show .label {
+    display: inline-block;
+    color: auto;
+}
+
+.show .value {
+    display: inline-block;
+}
+
+.edit .label {
+    display: inline-block;
+    color: auto;
+}
+
+.edit .value {
+    display: inline-block;
+}
+
+.record .show-field .label {
+    display: inline-block;
+    font-weight: bold;
+    overflow: hidden;
+    padding: 2px 5px 2px 5px;
+    color: auto;
+}
+
+.record .show-field .value {
+    display: inline-block;
+    overflow: hidden;
+    padding: 2px 5px 2px 5px;
+}
+
+.posts {
+    /* border: 1px solid; */
+    padding: 5px;
+    margin: 5px;
+}
+
+.welcome {
+    font-weight: bold;
+    margin: 2px 5px 2px 5px;
+}
+
+ 
+.editable-click {
+    cursor: pointer
+}
+
+.user-buttons {
+    text-align: right;
+    vertical-align: middle;
+}
+
+.user-buttons .User, .user-buttons .User.me {
+    display: inline-block;  
+    margin: 0px;
+    padding: 0px;
+    background-color: inherit;
+    border: 0px;
+    text-align: left;
+}
+
+.user-buttons .user-name-status {
+    width: auto;
+    vertical-align: middle;
+}
+
+.user-buttons h4 {
+    margin: 0px;
+}
+
+.user-buttons #login-buttons a {
+    color: #f9f381;
+}
+
+.accounts-dialog {
+    background-color: rgb(34, 34, 34);
+}
+
+.my-icon-btn {
+    padding: 1px 2px 1px 2px !important;
+    margin-top: -3px !important;
+}
+
+.join-leave {
+    float: right;
+    margin: 5px 2px 5px 2px;
+}

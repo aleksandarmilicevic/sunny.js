@@ -46,7 +46,47 @@ class ColumnBinRel
     new TypedSet([c.parent, c.type], set(@cells()))
 
   add: (key, value, callback=->) ->
+    attribute = Columns.findOne(@columnId) ##.name is attribute
+    modelClass = Columns.findOne(attribute.parent)
+    
     if Meteor.isServer
+      if Sunny.DataVisualiser.isLoaded
+        console.log("add")
+        console.log(@columnId)
+        console.log(key)
+        # console.log(Cells.findOne(key[0]))
+        console.log(value)
+        console.log("****")
+        console.log(attribute)
+        console.log(modelClass)
+        if key.length != 0
+          objectId = Sunny.DataVisualiser.cellidObjectidMap[modelClass.cellName][key[0]]
+          object = Sunny.Meta.records[modelClass.cellName].findById(objectId)
+          console.log("****found object***")
+          console.log(objectId)
+          console.log(object)
+        if attribute.cellName != null
+          newObject = Sunny.Meta.records[attribute.cellName].create()
+          counter = Sunny.DataVisualiser.modelNextId[attribute.cellName]
+          Sunny.DataVisualiser.objectidCellidMap[attribute.cellName][newObject.id()]= counter
+          Sunny.DataVisualiser.cellidObjectidMap[attribute.cellName][counter] = newObject.id()
+          Sunny.DataVisualiser.modelNextId[attribute.cellName] = counter+1
+        else if object[attribute.name] instanceof Array
+          newObj = value
+          if attribute.type != "_string"
+            attributeName = Sunny.Meta.records[modelClass.cellName][attribute.name].type.klasses[0].name
+            newObjectId = Sunny.DataVisualiser.cellidObjectidMap[attributeName][newObj]
+            newObj = Sunny.Meta.records[attributeName].findById(newObjectId)
+          
+          object[attribute.name].push(newObj)
+        else if attribute.type == "_string"
+          object[attribute.name] = value
+        else
+          attributeName = Sunny.Meta.records[modelClass.cellName][attribute.name].type.klasses[0].name
+          newObjectId = Sunny.DataVisualiser.cellidObjectidMap[attributeName][value]
+          newObj = Sunny.Meta.records[attributeName].findById(newObjectId)
+          object[attribute.name] = newObj
+
       Cells.upsert {column: @columnId, key}, {$addToSet: {values: value}}
       $$.model.invalidateCache()
       $$.call 'notifyChange', callback
@@ -54,7 +94,27 @@ class ColumnBinRel
       $$.call 'ColumnBinRel_add', @columnId, key, value, callback
 
   remove: (key, value, callback=->) ->
+    attribute = Columns.findOne(@columnId) ##.name is attribute
+    modelClass = Columns.findOne(attribute.parent)
     if Meteor.isServer
+      if attribute.cellName == null
+        objectId = Sunny.DataVisualiser.cellidObjectidMap[modelClass.cellName][key[0]]
+        object = Sunny.Meta.records[modelClass.cellName].findById(objectId)
+      if attribute.cellName != null
+        objectId = Sunny.DataVisualiser.cellidObjectidMap[attribute.cellName][value]
+        object = Sunny.Meta.records[attribute.cellName].findById(objectId)
+        object.destroy()
+      else if object[attribute.name] instanceof Array
+        oldObj = value
+        if attribute.type != "_string"
+          attributeName = Sunny.Meta.records[modelClass.cellName][attribute.name].type.klasses[0].name
+          oldObjectId = Sunny.DataVisualiser.cellidObjectidMap[attributeName][oldObj]
+          oldObj = Sunny.Meta.records[attributeName].findById(oldObjectId)
+        
+        object[attribute.name].remove(oldObj)
+      else
+        object[attribute.name] = null
+
       Cells.update {column: @columnId, key}, {$pull: {values: value}}
       $$.model.invalidateCache()
       $$.call 'notifyChange', callback
@@ -63,6 +123,31 @@ class ColumnBinRel
 
   ## remove(key, oldValue) + add(key, newValue) in a single operation
   removeAdd: (key, oldValue, newValue, callback=->) ->
+    attribute = Columns.findOne(@columnId) ##.name is attribute
+    modelClass = Columns.findOne(attribute.parent)
+    console.log("removeAdd")
+    if Meteor.isServer
+      objectId = Sunny.DataVisualiser.cellidObjectidMap[modelClass.cellName][key[0]]
+      object = Sunny.Meta.records[modelClass.cellName].findById(objectId)
+      if object[attribute.name] instanceof Array
+        newObj = newValue
+        oldObj = oldValue
+        if attribute.type != "_string"
+          attributeName = Sunny.Meta.records[modelClass.cellName][attribute.name].type.klasses[0].name
+          newObjectId = Sunny.DataVisualiser.cellidObjectidMap[attributeName][newValue]
+          oldObjectId = Sunny.DataVisualiser.cellidObjectidMap[attributeName][oldValue]
+          newObj = Sunny.Meta.records[attributeName].findById(newObjectId)
+          oldObj = Sunny.Meta.records[attributeName].findById(oldObjectId)
+        
+        object[attribute.name].remove(oldObj)
+        object[attribute.name].push(newObj)
+      else if attribute.type != "_string"
+        attributeName = Sunny.Meta.records[modelClass.cellName][attribute.name].type.klasses[0].name
+        objectId = Sunny.DataVisualiser.cellidObjectidMap[attributeName][newValue]
+        newObj = Sunny.Meta.records[attributeName].findById(objectId)
+        object[attribute.name] = newObj 
+      else
+        object[attribute.name] = newValue  
     if ! EJSON.equals(oldValue, newValue)
       if Meteor.isServer
         # This WOULD have been nice, but is not supported (Mongo ticket SERVER-1050)

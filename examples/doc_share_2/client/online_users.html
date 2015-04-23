@@ -1,0 +1,31 @@
+<template name="friend_users">
+  <div class="inlineb online-users">
+  	<h3>Network</h3>
+    {{#each friends}}
+      {{> _friend user=this.user relation=this.relation avatar=true status=true}}
+    {{/each}}
+  </div>
+</template>
+
+<template name="requests_users">
+  <div class="inlineb online-users">
+  	<h3>Requests</h3>
+    {{#each requests}}
+      {{> _request this }}
+    {{/each}}
+  </div>
+</template>
+
+<template name="other_users">
+  <div class="inlineb online-users">
+  	<h3>Others</h3>
+    {{#each otherfriends}}
+    	{{#if ifNotCurrentUser}}
+	      {{> _other user=this currentuser=currentuser avatar=true status=true}}
+      {{/if}}
+    {{/each}}
+    {{#each pending}}
+      {{> _pending this }}
+    {{/each}}
+  </div>
+</template>

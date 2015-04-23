@@ -9,4 +9,6 @@ accounts-base
 bootstrap
 coffeescript
 accounts-ui
-iron-router
+iron:router
+callingcontext
+reactive-var

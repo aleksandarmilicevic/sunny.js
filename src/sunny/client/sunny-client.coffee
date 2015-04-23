@@ -35,7 +35,8 @@ if Meteor.isClient
         triggerEvent($(this))
         $(this).val("")
 
-    Router.route("sunnyDatabase", { path : '/EJdatabase' });
+    
+    Router.route "/uiGenerator", -> @render "uiGenerator"
     Router.route "/database", -> @render "Spreadsheet"  # @deprecated (should show list of avail sheets)
     Router.route "/database/:sheet", ->
       @render "Spreadsheet", data: {sheet: @params.sheet}

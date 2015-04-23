@@ -1,0 +1,134 @@
+<template name="_user">
+    <div class="User list-group-item {{#if isMe this.user}}me{{/if}}">
+      {{#if avatar}}
+        {{#if user}}
+          <img src="/images/gnuhead.png" width="45"/>
+        {{else}}
+          <img src="/images/anonymous-50x50.png" width="45"/>
+        {{/if}}
+      {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <h4 class="list-group-item-heading"
+              {{editableField obj=this.user fld="name"}}>
+            {{salute this.user}}
+          </h4>
+        {{else}}
+          <h4 class="list-group-item-heading">{{salute this.user}}</h4>
+        {{/if}}
+        {{#if status}}
+          <p class="list-group-item-text">
+            <a {{editableField obj=this.user fld="status"}}>{{this.user.statusText}}</a>
+          </p>
+        {{/if}}
+      </div>
+    </div>
+</template>
+
+
+<template name="_friend">
+    <div class="User list-group-item {{#if isMe this.user}}me{{/if}}">
+        {{#if this.user}}
+          <img src="/images/gnuhead.png" width="45"/>
+        {{else}}
+          <img src="/images/anonymous-50x50.png" width="45"/>
+        {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <h4 class="list-group-item-heading"
+              {{editableField obj=this.user fld="name"}}>
+            {{salute this.user}}
+          </h4>
+        {{else}}
+          <h4 class="list-group-item-heading">{{salute this.user}}</h4>
+        {{/if}}
+      </div>
+      <h4>as: 
+      <a {{editableField obj=this.relation fld="relation_type"}} style="color:inherit;">{{this.relation.relation_type}}</a>
+      </h4>
+      <div style="margin-top: 5px; width: 225px;">
+        <button class="view-user-album" onclick="viewUserAlbum('{{this.user.id}}')">View Album</button>
+      </div>
+      
+    </div>
+</template>
+
+<template name="_request">
+    <div class="User list-group-item">
+      {{#if this.from}}
+        <img src="/images/gnuhead.png" width="45"/>
+      {{else}}
+        <img src="/images/anonymous-50x50.png" width="45"/>
+      {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <h4 class="list-group-item-heading">
+            {{salute this.from}}
+          </h4>
+        {{else}}
+          <h4 class="list-group-item-heading">{{salute this.from}}</h4>
+        {{/if}}
+          <div {{ConfirmRelation relation=this}} class="AddTagForm form-inline" 
+        onkeypress="return event.keyCode != 13;">
+          <button class="btn btn-default SendMsg" 
+                 {{sunny_trigger}}>
+           Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+</template>
+
+<template name="_pending">
+    <div class="User list-group-item">
+      {{#if this.to}}
+        <img src="/images/gnuhead.png" width="45"/>
+      {{else}}
+        <img src="/images/anonymous-50x50.png" width="45"/>
+      {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <h4 class="list-group-item-heading">
+            {{salute this.to}}
+          </h4>
+        {{else}}
+          <h4 class="list-group-item-heading">{{salute this.to}}</h4>
+        {{/if}}
+          <div>Request Pending</div>
+      </div>
+    </div>
+</template>
+
+<template name="_other">
+    <div class="User list-group-item {{#if isMe this.user}}me{{/if}}">
+      {{#if avatar}}
+        {{#if user}}
+          <img src="/images/gnuhead.png" width="45"/>
+        {{else}}
+          <img src="/images/anonymous-50x50.png" width="45"/>
+        {{/if}}
+      {{/if}}
+      <div class="user-name-status">
+        {{#if editableName}}
+          <h4 class="list-group-item-heading"
+              {{editableField obj=this.user fld="name"}}>
+            {{salute this.user}}
+          </h4>
+        {{else}}
+          <h4 class="list-group-item-heading">{{salute this.user}}</h4>
+        {{/if}}
+      </div>
+      <div {{CreateRelation fromU=currentuser toU=this.user}} class="AddTagForm form-inline" 
+      onkeypress="return event.keyCode != 13;">
+        <div class="form-group">
+          <input type="text" name="type" 
+                  placeholder="Enter Type"
+                  {{CreateRelation_type}}/>
+        </div>
+        <button class="btn btn-default SendMsg" 
+               {{sunny_trigger}}>
+         Request as Friend
+        </button>
+      </div>
+    </div>
+</template>

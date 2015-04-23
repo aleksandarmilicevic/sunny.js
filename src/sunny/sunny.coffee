@@ -127,6 +127,11 @@ Sunny.Conf = do ->
   registerGlobalNames: true
   serverRecordPersistence: "reuse" # valid values: 'reuse', 'create', 'replace'
 
+Sunny.DataVisualiser = do ->
+  objectidCellidMap: {}
+  cellidObjectidMap: {}
+  modelNextId: {}
+
 # ====================================================================================
 #   standard prototype extensions
 # ====================================================================================
@@ -891,6 +896,7 @@ Sunny.Model = do ->
     addStaticMethods(r)
     register(r)
     return r
+
 
   ec = (e) -> rc(e, true)
 
@@ -1995,6 +2001,8 @@ Meteor.startup () ->
         Meteor.subscribe klsName
         console.log "subscribed to #{klsName}"
 
+  
+
 # ====================================================================================
 #   Initializations
 # ====================================================================================
@@ -2074,4 +2082,7 @@ if Meteor.isServer
     console.log "on login failure"
     clnt = getSunnyClient(x.connection.id)
     clnt.user = null if clnt
+
+
+
 
