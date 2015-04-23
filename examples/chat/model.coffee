@@ -174,4 +174,25 @@ Sunny.methods
     ev = Sunny.CreateRoom.new(roomName: name)
     sdebug "event's client: #{ev.client}"
     ev.trigger()
- 
+
+Sunny.methods
+  joinRoom: (name) ->
+    sdebug "createNewRoom calleD"
+    sdebug "my client: #{Sunny.myClient()}"
+    ev = Sunny.JoinRoom.new(roomName: name)
+    sdebug "event's client: #{ev.client}"
+    ev.trigger()
+
+Sunny.methods
+  sendChat: (text) ->
+    rooms = myServer.rooms.filter( (x) -> x.members.contains(Sunny.myClient()) )
+    for roomToSend in rooms
+      ev = Sunny.SendMsg.new(room: roomToSend, msgText: text)
+      ev.trigger()
+      sdebug "event sent message: #{text} to room: #{roomSend}"
+
+Sunny.methods
+    sendMessageToRoom: (name, text) ->
+      Sunny.joinRoom(name)
+      Sunny.sendChat(text)
+
