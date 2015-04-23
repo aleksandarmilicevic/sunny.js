@@ -179,13 +179,13 @@ Sunny.methods
   joinRoom: (name) ->
     sdebug "createNewRoom calleD"
     sdebug "my client: #{Sunny.myClient()}"
-    ev = Sunny.JoinRoom.new(roomName: name)
+    ev = Sunny.JoinRoom.new(room: Sunny.ChatRoom.findOne(name: name))
     sdebug "event's client: #{ev.client}"
     ev.trigger()
 
 Sunny.methods
   sendChat: (text) ->
-    rooms = myServer.rooms.filter( (x) -> x.members.contains(Sunny.myClient()) )
+    rooms = Sunny.myServer.rooms.filter( (x) -> x.members.contains(Sunny.myClient()) )
     for roomToSend in rooms
       ev = Sunny.SendMsg.new(room: roomToSend, msgText: text)
       ev.trigger()
@@ -193,6 +193,14 @@ Sunny.methods
 
 Sunny.methods
     sendMessageToRoom: (name, text) ->
-      Sunny.joinRoom(name)
-      Sunny.sendChat(text)
+      #Sunny.joinRoom(name)
+      #Sunny.sendChat(text)
+      sdebug "**** name: #{name}, text: #{text}"
+      sdebug "**** my client: #{Sunny.myClient().user}"
+      myRoom = App.ChatRoom.findOne({name: name})
+      sdebug "**** myRoom: #{myRoom}"
+      ev = App.JoinRoom.new(room: myRoom)
+      ev.trigger()
+      ev = App.SendMsg.new(room: myRoom, msgText: text)
+      ev.trigger()
 
