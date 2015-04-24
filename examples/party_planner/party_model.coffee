@@ -4,28 +4,20 @@ simport Sunny.Types
 
 # ============================ RECORDS ======================================
 
-user class User
-  avatarLink: () -> this.avatar || "https://www.gnu.org/graphics/heckert_gnu.small.png"
-
 record class Party
   name: Text
   location: Text
   time: Val
   finalized: Bool
-  hosts: set User
-  guests: set User
+  hosts: set SunnyUser
+  guests: set SunnyUser
 
         
 # ============================ MACHINES ======================================
 
-
 client class Client
-  user: User
+  user: SunnyUser
   selectedEvent: Party
-
-
-server (class Server)
-
 
 # ============================ EVENTS ======================================
 
@@ -34,7 +26,7 @@ event class ClientEvent
   from:
     client: Client
   to:
-    server: Server
+    server: SunnyServer
 
 event class SelectEvent extends ClientEvent
   params:
@@ -52,16 +44,16 @@ event class AddGuestHost extends ClientEvent
   params:
     party: Party
     userName: Text
-    user: User
+    user: SunnyUser
     
   requires: () ->
     return "must specify party" unless this.party
     return "must specify user" unless this.userName || this.user
     unless this.user
       if this.userName.search("@") != -1
-        this.user = User.findOne(email: this.userName)
+        this.user = SunnyUser.findOne(email: this.userName)
       else
-        this.user = User.findOne(name: this.userName)
+        this.user = SunnyUser.findOne(name: this.userName)
     return "User #{this.userName} not found" unless this.user
 
 event class AddHost extends AddGuestHost
@@ -80,7 +72,7 @@ event class AddGuest extends AddGuestHost
 event class RemoveGuestHost extends ClientEvent
   params:
     party: Party
-    user: User
+    user: SunnyUser
 
   requires: () ->
     return "must specify party" unless this.party
@@ -114,7 +106,7 @@ event class CreateEmptyEvent extends ClientEvent
 # ============================ POLICIES ======================================
 
 
-policy User,
+policy SunnyUser,
   # user object in question is different from the logged in user
   _precondition: (user) -> not user.equals(this.client?.user)
 
@@ -148,12 +140,12 @@ policy Party,
     !party.hosts.contains(u) && !party.guests.contains(u)
      
   read: 
-    "name":      -> return this.allow("<private party>")
-    "location":  -> return this.allow("<secret location>")
-    "time":      -> return this.allow("<unknown time>")
-    "finalized:" -> return false
-    "hosts":     -> return this.allow([])
-    "guests":    -> return this.allow([])
+    "name":      () -> return this.allow("<private party>")
+    "location":  () -> return this.allow("<secret location>")
+    "time":      () -> return this.allow("<unknown time>")
+    "finalized": () -> return this.allow(false)
+    "hosts":     () -> return this.allow([])
+    "guests":    () -> return this.allow([])
     
 policy Party,
   # client user is not a host and the party hasn't been finalized

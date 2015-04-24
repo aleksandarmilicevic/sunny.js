@@ -380,8 +380,10 @@ Sunny.Log = do ->
   _indent = new Sunny.Utils.FiberLocalVar("Sunny.Log.indent", "")
 
   if Meteor.isServer
-    try
-      clc = Npm.require('cli-color')
+    clc = null
+    try clc = Npm.require('cli-color')
+    try clc = Npm.require('/usr/local/lib/node_modules/cli-color') unless clc
+    if clc
       _styles = [clc.red, clc.green, clc.yellow, clc.cyanBright, clc.magenta]
       _bgstyles = [clc.bgBlackBright, clc.bgGreen, clc.bgBlue, clc.bgCyan, clc.bgMagenta]
       _errStyle = clc.red.bold.bgYellowBright
@@ -1152,7 +1154,7 @@ Sunny.Model = do ->
       fldComp.exe(fldVal)
 
     _toMeteorRef: () -> _id: this.id(), _sunny_type: this.type()
-    _inspect:     () -> "Sunny.Meta.records['#{this.meta().name}'].new({_id: '#{this.id()}'})"
+    _inspect:     () -> "Sunny.Meta.findSig('#{this.meta().name}').new({_id: '#{this.id()}'})"
 
     __static__: {
         create:     (objProps)  -> Sunny.CRUD.create(this, objProps)
@@ -1569,6 +1571,9 @@ Sunny.Meta = do ->
 
   findSig: (name) ->
     return null unless name
+    return Sunny.Dsl.SunnyUser if name == "SunnyUser"
+    return Sunny.Dsl.SunnyClient if name == "SunnyClient"
+    return Sunny.Dsl.SunnyServer if name == "SunnyServer"
     return this.records[name] || this.machines[name] || this.events[name]
 
 # ====================================================================================
@@ -1696,6 +1701,8 @@ Sunny.Dsl = do ->
     email: Text
     name: Text
     avatar: Text
+
+    avatarLink: () -> this.avatar || "https://www.gnu.org/graphics/heckert_gnu.small.png"
     
     __static__: {
       findOrCreate: (mUser) ->
