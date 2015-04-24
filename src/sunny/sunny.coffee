@@ -144,6 +144,7 @@ Sunny.Conf = do ->
   registerGlobalNames: true
   serverRecordPersistence: "reuse" # valid values: 'reuse', 'create', 'replace'
   deepPolicyChecking: true
+  atomicity: "rpc" # valid values: 'global', 'rpc', 'none'
 
 # ====================================================================================
 #   standard prototype extensions
@@ -308,6 +309,41 @@ _cleanupClient = (client, connId) ->
 # ====================================================================================
 
 Sunny.Utils = do ->
+  lock_debug = (msg) -> sdebug(msg)
+
+  class Lock
+    constructor: (name) ->
+      @name = name
+      @acquired = false
+      @fiberId = null
+      @monitorCnt = 0
+      @blockedFibers = []
+    
+    wait: () ->
+      lock_debug "[[ WAITING on #{this} ]]"
+      while @acquired and Sunny.Utils.fiberId() != @fiberId
+        lock_debug "[[ yielding ]]"
+        fb = Fiber.current;
+        @blockedFibers.push(fb)
+        Fiber.yield()
+      @acquired = true
+      @fiberId = Sunny.Utils.fiberId()
+      @monitorCnt = @monitorCnt + 1
+      lock_debug "[[ IN #{this}: #{@monitorCnt} ]]"
+    
+    release: () ->
+      @monitorCnt = @monitorCnt - 1
+      if @monitorCnt == 0
+        lock_debug "[[ OUT of #{this}]]"
+        @acquired = false
+        fbToResume = @blockedFibers.pop()
+        lock_debug "[[ resuming ]]" if fbToResume
+        fbToResume.run() if fbToResume
+      else
+        lock_debug "[[ DEC #{this}: #{@monitorCnt} ]]"
+
+    toString: () -> "L{#{@name}}"
+        
   class FiberLocalVar
     constructor: (name, val) ->
       @name = name
@@ -355,6 +391,7 @@ Sunny.Utils = do ->
       Sunny.Log.sfatal "assertion failed: #{msg}"
 
   FiberLocalVar: FiberLocalVar
+  Lock: Lock
   fiberId:       () ->
     id = fiberIdVar.get()
     id = fiberIdVar.set(fiberIdCnt++) unless id
@@ -362,6 +399,16 @@ Sunny.Utils = do ->
 
   safeReg: (obj, key, val) ->
     obj[key] = val unless obj.hasOwnProperty(key)
+
+  wrapInCriticalSection: (lock, fn) ->
+    () ->
+      self = this
+      args = arguments
+      lock.wait()
+      try 
+        fn.apply(self, args)
+      finally
+        lock.release()
 
 assert = Sunny.Utils.assert
 
@@ -2084,33 +2131,13 @@ Sunny._CRUD = do ->
 # ====================================================================================
 Sunny.Queue = do ->
   _queue = new Sunny.Utils.FiberLocalVar("Sunny.Queue.queue", [])
+  _lock = new Sunny.Utils.Lock("global")
   _invIdCnt = 0
 
   _currInvocation = () -> _queue.peek()
   _rootInvocation = () -> _queue.getAt(0)
 
-  class Invocation
-    # @op     :   String
-    # @opFn   : Function
-    # @args   : Array
-    constructor: (op, opFn, args) ->
-      @id     = _invIdCnt++
-      @op     = op
-      @opFn   = opFn
-      @args   = args
-      @comps  = {}
-
-    addComp: (comp) -> @comps[comp._id] = comp
-
-  currInvocation: _currInvocation
-  rootInvocation: _rootInvocation
-
-  enqueueComp: (comp) ->
-    inv = _rootInvocation()
-    assert inv, "Cannot reschedule computation outside of queued invocations"
-    inv.addComp(comp)
-
-  wrapAsInvocation: (op, opFn) ->
+  _wrapAsInvocationNonBlocking = (op, opFn) ->
     () ->
       self = this
       args = arguments
@@ -2134,6 +2161,32 @@ Sunny.Queue = do ->
           else
             Sunny.Deps.rerun(comp) for cId, comp of inv.comps
 
+  class Invocation
+    # @op     :   String
+    # @opFn   : Function
+    # @args   : Array
+    constructor: (op, opFn, args) ->
+      @id     = _invIdCnt++
+      @op     = op
+      @opFn   = opFn
+      @args   = args
+      @comps  = {}
+
+    addComp: (comp) -> @comps[comp._id] = comp
+
+  currInvocation: _currInvocation
+  rootInvocation: _rootInvocation
+
+  enqueueComp: (comp) ->
+    inv = _rootInvocation()
+    assert inv, "Cannot reschedule computation outside of queued invocations"
+    inv.addComp(comp)
+
+  wrapAsInvocation: (op, opFn) ->
+    fn = _wrapAsInvocationNonBlocking(op, opFn)    
+    fn = Sunny.Utils.wrapInCriticalSection(_lock, fn) if Meteor.isServer && Sunny.Conf.eventAtomicity=='global'
+    fn
+        
   runAsInvocation: (op, opFn) ->
     Sunny.Queue.wrapAsInvocation(op, opFn).call(this)
 
@@ -2177,10 +2230,14 @@ Sunny.CRUD.readField = Sunny._CRUD.readField
 mthds = {}
 
 if Meteor.isServer
+  _rpcLock = new Sunny.Utils.Lock("rpc")
   _wrapForRPC = (op, opFn) ->
-    Sunny.Queue.wrapAsInvocation op, () ->
+    fn = Sunny.Queue.wrapAsInvocation op, () ->
       sdebug "applying Meteor.method '#{op}'"
       opFn.apply(this, arguments)
+    fn = Sunny.Utils.wrapInCriticalSection(_rpcLock, fn) if Sunny.Conf.atomicity=="rpc"
+    fn
+    
   mthds[op] = _wrapForRPC op, opFn for op, opFn of Sunny._CRUD
   mthds["event"] = _wrapForRPC "event", (event) ->
     event.setFrom(getSunnyClient(this.connection.id))
