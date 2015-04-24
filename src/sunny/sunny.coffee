@@ -380,8 +380,10 @@ Sunny.Log = do ->
   _indent = new Sunny.Utils.FiberLocalVar("Sunny.Log.indent", "")
 
   if Meteor.isServer
-    try
-      clc = Npm.require('cli-color')
+    clc = null
+    try clc = Npm.require('cli-color')
+    try clc = Npm.require('/usr/local/lib/node_modules/cli-color') unless clc
+    if clc
       _styles = [clc.red, clc.green, clc.yellow, clc.cyanBright, clc.magenta]
       _bgstyles = [clc.bgBlackBright, clc.bgGreen, clc.bgBlue, clc.bgCyan, clc.bgMagenta]
       _errStyle = clc.red.bold.bgYellowBright
