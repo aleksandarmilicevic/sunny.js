@@ -1152,7 +1152,7 @@ Sunny.Model = do ->
       fldComp.exe(fldVal)
 
     _toMeteorRef: () -> _id: this.id(), _sunny_type: this.type()
-    _inspect:     () -> "Sunny.Meta.records['#{this.meta().name}'].new({_id: '#{this.id()}'})"
+    _inspect:     () -> "Sunny.Meta.findSig('#{this.meta().name}').new({_id: '#{this.id()}'})"
 
     __static__: {
         create:     (objProps)  -> Sunny.CRUD.create(this, objProps)
@@ -1566,6 +1566,9 @@ Sunny.Meta = do ->
 
   findSig: (name) ->
     return null unless name
+    return Sunny.Dsl.SunnyUser if name == "SunnyUser"
+    return Sunny.Dsl.SunnyClient if name == "SunnyClient"
+    return Sunny.Dsl.SunnyServer if name == "SunnyServer"
     return this.records[name] || this.machines[name] || this.events[name]
 
 # ====================================================================================
@@ -1693,6 +1696,8 @@ Sunny.Dsl = do ->
     email: Text
     name: Text
     avatar: Text
+
+    avatarLink: () -> this.avatar || "https://www.gnu.org/graphics/heckert_gnu.small.png"
     
     __static__: {
       findOrCreate: (mUser) ->
