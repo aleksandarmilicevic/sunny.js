@@ -336,7 +336,7 @@ Sunny.Utils = do ->
       if @monitorCnt == 0
         lock_debug "[[ OUT of #{this}]]"
         @acquired = false
-        fbToResume = @blockedFibers.pop()
+        fbToResume = @blockedFibers.shift()
         lock_debug "[[ resuming ]]" if fbToResume
         fbToResume.run() if fbToResume
       else
