@@ -7,12 +7,6 @@
 .top{
     vertical-align: top;
 }
-.album-main{
-    width: 74%;
-    border-radius: 10px;
-    margin: 20px;
-    background-color: #8db9df;
-}
 #online-users{
     width: 300px;
     margin-left: 20px;
@@ -49,7 +43,7 @@
 }
 
 .attach-left {
-    width: 220px;
+    width: 240px;
     position: relative;
     left: -195px;
     top: 4px;
