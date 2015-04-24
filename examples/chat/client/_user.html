@@ -2,7 +2,11 @@
     <div class="User list-group-item {{#if isMe this.user}}me{{/if}}">
       {{#if avatar}}
         {{#if user}}
+          {{#if user.avatar}}
+          <img src="{{user.avatar}}" width="45"/> 
+          {{else}}
           <img src="/images/gnuhead.png" width="45"/>
+          {{/if}}
         {{else}}
           <img src="/images/anonymous-50x50.png" width="45"/>
         {{/if}}

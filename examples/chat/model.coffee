@@ -2,7 +2,8 @@ simport Sunny.Dsl
 simport Sunny.Fun
 simport Sunny.Types
 
-Sunny.Conf.serverRecordPersistence = 'replace'
+# Sunny.Conf.serverRecordPersistence = 'replace'
+Sunny.Conf.deepPolicyChecking = false
 
 # ============================ RECORDS ======================================
 
@@ -33,6 +34,7 @@ record class ChatRoom
 
 client class Client
   user: User
+  selectedRooms: set ChatRoom
 
 server class Server
   rooms: compose set ChatRoom
@@ -47,7 +49,18 @@ event class ClientEvent
   to:
     server: Server
 
+event class AddRoomToSelected extends ClientEvent
+  params: room: ChatRoom
+  requires: () -> return "must specify room" unless this.client && this.room
+  ensures: () ->
+    this.client.selectedRooms.push(this.room)
 
+event class RemoveRoomFromSelected extends ClientEvent
+  params: room: ChatRoom
+  requires: () -> return "must specify room" unless this.client && this.room
+  ensures: () ->
+    this.client.selectedRooms.remove(this.room)
+    
 event class SendMsg extends ClientEvent
   params:
     room: ChatRoom
@@ -110,25 +123,20 @@ event class LeaveRoom extends ClientEvent
     
 # ============================ POLICIES ======================================
 
-
 policy User,
   _precondition: (user) -> not user.equals(this.client?.user)
 
-  read:
-    "! name, status": -> return this.deny("can't read User's private data")
-    
-  update:
-    "*": (user, val) -> return this.deny("can't edit other people's data")
-
+  read:   "! name, status": -> return this.deny("can't read User's private data")
+  update: "*":  (user, val) -> return this.deny("can't edit other people's data")
+  delete:       (user)      -> return this.deny("can't delete other user")
+  find:         (users) ->
+    client = this.client
+    return this.allow(filter users, (u) -> u.equals(client.user) || u.status != "busy")
+  
 policy Client,
-  _precondition: (clnt) -> not clnt.equals(this.client)
-
-  read:
-    user: (clnt, user) ->
-       if clnt?.user?.status == "busy"
-         return this.deny()
-       else
-         return this.allow()
+  _precondition: (clnt) -> clnt.user && !clnt.user.equals(this.client?.user)
+  update:   "*": (clnt) -> return this.deny()
+  delete:        (clnt) -> return this.deny()
 
 # show messages starting with "#private" only to members
 policy ChatRoom,
@@ -140,7 +148,10 @@ policy ChatRoom,
       else
         return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
 
-
+policy Msg,
+  _precondition: (msg) -> not (msg.sender && msg.sender.equals(this.client?.user))
+  update: "*": () -> return this.deny("can't change other's messages")
+  delete:      () -> return this.deny("can't delete other's messages")
 
 # ------------------------------
 # stdlib

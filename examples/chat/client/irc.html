@@ -1,6 +1,6 @@
 <template name="irc">
 
-{{#each Server.rooms}}
+{{#each Client.selectedRooms}}
   {{> _room room=this}}
 {{/each}}
 

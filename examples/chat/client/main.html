@@ -46,6 +46,14 @@
     <div id="online-users" class="attach-left" >
       {{> online_users}}
     </div>
+    <div id="online-rooms" class="attach-left" >
+      <b>online rooms</b>:
+      {{#each Server.rooms}}
+      <div class="room-title" {{AddRoomToSelected room=this}}>
+        <a href="#" {{sunny_trigger}}>{{title}}</a>
+      </div>
+      {{/each}}
+    </div>
   </div>
   <div class="container">
     <div id="chatroom-container" class="row">

@@ -5,6 +5,9 @@
       <div class="panel-title">
         <a {{editableField obj=this.room fld="name"}}>{{room.title}}</a>
         <div class="pull-right">
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-minus"
+                {{sunny_trigger event="RemoveRoomFromSelected" room=this.room}}>
+          </span>
           <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
                 {{sunny_trigger event="Destroy" obj=this.room}}>
           </span>
