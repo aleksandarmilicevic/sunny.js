@@ -1357,7 +1357,9 @@ Sunny.Model = do ->
     checkOpName: (op) -> op.name == @op
     checkSig:    (op) -> this._isSubSig(op.sig)
     checkObj:    (op) -> this._isSubSig(op.obj?.meta?().sigCls)
-    checkPre:    (op) -> not @precondition or @precondition.apply(this._mkContext(), op.args())
+    checkPre:    (op) ->
+      return true unless this instanceof ObjPolicy
+      not @precondition or @precondition.apply(this._mkContext(op), op.args())
 
     applies: (op) ->
       this.checkOpName(op) and
@@ -1366,18 +1368,19 @@ Sunny.Model = do ->
       this.checkPre(op)
 
     check: (op) ->
-      ctx = this._mkContext(op.argsHashOp())
+      ctx = this._mkContext(op, op.argsHashOp())
       ans = @checkerFn.apply(ctx, op.args())
       return this._toPolicyOutcome(ans)
 
     _isSubSig: (sig) -> Sunny.Types.isSubklass(sig, @sig)
 
-    _mkContext:   (extraHash) ->
+    _mkContext:   (op, extraHash) ->
       ans =
-        allow:  (newVal) -> new PolicyOutcome(true, newVal)
-        deny:   (reason) -> new PolicyOutcome(false, undefined, reason)
-        client: Sunny.myClient()
-        server: Sunny.myServer()
+        allow  : (newVal) -> new PolicyOutcome(true, newVal)
+        deny   : (reason) -> new PolicyOutcome(false, undefined, reason)
+        client : Sunny.myClient()
+        server : Sunny.myServer()
+        op     : op
       ans[p] = pv for p, pv of extraHash
       ans
 
@@ -1844,6 +1847,7 @@ Sunny.ACL = do ->
   # operation is already found on the stack, ALLOW is returned to
   # avoid infinite recursion.
   # -------------------------------------------------------------------
+
   _checkDeep = (op) ->
     # check cache first.
     if op.isReadOnly()
