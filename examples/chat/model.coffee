@@ -4,6 +4,7 @@ simport Sunny.Types
 
 # Sunny.Conf.serverRecordPersistence = 'replace'
 Sunny.Conf.deepPolicyChecking = false
+# Sunny.Conf.atomicity = "global"
 
 # ============================ RECORDS ======================================
 
@@ -70,7 +71,7 @@ event class SendMsg extends ClientEvent
     return "must log in first!" if not this.client?.user
     return "no room given" unless this.room
     return "no text given" unless this.msgText
-    return "must join room first" unless this.room.members.contains(this.client.user)
+    #return "must join room first" unless this.room.members.contains(this.client.user)
 
   ensures: () ->
     msg = Msg.create(
@@ -151,7 +152,7 @@ policy ChatRoom,
 policy Msg,
   _precondition: (msg) -> not (msg.sender && msg.sender.equals(this.client?.user))
   update: "*": () -> return this.deny("can't change other's messages")
-  delete:      () -> return this.deny("can't delete other's messages")
+  #delete:      () -> return this.deny("can't delete other's messages")
 
 # ------------------------------
 # stdlib
@@ -195,12 +196,20 @@ Sunny.methods
     sendMessageToRoom: (name, text) ->
       #Sunny.joinRoom(name)
       #Sunny.sendChat(text)
-      sdebug "**** name: #{name}, text: #{text}"
-      sdebug "**** my client: #{Sunny.myClient().user}"
-      myRoom = App.ChatRoom.findOne({name: name})
-      sdebug "**** myRoom: #{myRoom}"
-      ev = App.JoinRoom.new(room: myRoom)
-      ev.trigger()
-      ev = App.SendMsg.new(room: myRoom, msgText: text)
-      ev.trigger()
-
+      Sunny._globalLock.wait()
+      try
+        sdebug "**** BBBBBBBB"
+        sdebug "**** name: #{name}, text: #{text}"
+        sdebug "**** my client: #{Sunny.myClient().user}"
+        myRoom = App.ChatRoom.findOne({name: name})
+        sdebug "**** myRoom: #{myRoom}"
+        #ev = App.JoinRoom.new(room: myRoom)
+        #ev.trigger()
+        #sdebug "CCCCC"
+        ev = App.SendMsg.new(room: myRoom, msgText: text)
+        ev.trigger()
+        sdebug "DDDDDD"
+        #msg = {text: text, sender: null, time: new Date()}
+        #App.Msg.__meta__.__repr__.insert(msg)
+      finally
+        Sunny._globalLock.release()

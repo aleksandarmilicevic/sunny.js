@@ -50,7 +50,8 @@ Sunny.methods = (hash) ->
     do(name, fn) ->
       wfn = fn
       if (Meteor.isServer)
-        wfn = Sunny.Queue.wrapAsInvocation "M-#{name}", fn
+        ffn = Sunny.Queue.wrapAsInvocation "M-#{name}", fn
+        wfn = () -> sdebug("***** AAAAAAAA"); ffn.call(this, arguments)
       mthds[name] = wfn
   Meteor.methods mthds
 
@@ -144,7 +145,7 @@ Sunny.Conf = do ->
   registerGlobalNames: true
   serverRecordPersistence: "reuse" # valid values: 'reuse', 'create', 'replace'
   deepPolicyChecking: true
-  atomicity: "rpc" # valid values: 'global', 'rpc', 'none'
+  atomicity: "global" # valid values: 'global', 'rpc', 'none'
 
 # ====================================================================================
 #   standard prototype extensions
@@ -336,9 +337,11 @@ Sunny.Utils = do ->
       if @monitorCnt == 0
         lock_debug "[[ OUT of #{this}]]"
         @acquired = false
-        fbToResume = @blockedFibers.shift()
-        lock_debug "[[ resuming ]]" if fbToResume
-        fbToResume.run() if fbToResume
+        bf = @blockedFibers
+        @blockedFibers = []
+        for fb in bf
+          lock_debug "[[ resuming ]]" if fb
+          fb.run() if fb
       else
         lock_debug "[[ DEC #{this}: #{@monitorCnt} ]]"
 
@@ -2126,12 +2129,15 @@ Sunny._CRUD = do ->
   hashFieldSet:     (obj, fldName, propName, propVal) ->
   hashFieldDelete:  (obj, fldName, propName) ->
 
+
+Sunny._globalLock = new Sunny.Utils.Lock("Global")
+
 # ====================================================================================
 #   (server only) Sunny.Queue
 # ====================================================================================
 Sunny.Queue = do ->
   _queue = new Sunny.Utils.FiberLocalVar("Sunny.Queue.queue", [])
-  _lock = new Sunny.Utils.Lock("global")
+  _lock = Sunny._globalLock #new Sunny.Utils.Lock("global")
   _invIdCnt = 0
 
   _currInvocation = () -> _queue.peek()
