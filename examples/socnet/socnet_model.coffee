@@ -8,7 +8,7 @@ user class User
   status: Text
   location: Text
   network: [Text, "User"]
-  wall: set "Post"
+  wall: seq "Post"
 
   avatarLink: () -> this.avatar || "https://www.gnu.org/graphics/heckert_gnu.small.png"
   statusText: () -> this.status || "<statusless>"
@@ -19,10 +19,16 @@ user class User
   hasConnection: (user) ->
     findIndex(this.network, (e) -> e[1].equals(user)) != -1
     
-  friendshipKinds: (user) ->
-    kinds = findFirst this.network.groupByRange(), (e) -> e.key.equals(user)
-    return [] unless kinds
-    return map kinds.value, (e) -> e[0]
+  # friendshipKinds: (user) ->
+  #   kinds = findFirst this.network.groupByRange(), (e) -> e.key.equals(user)
+  #   return [] unless kinds
+  #   return map kinds.value, (e) -> e[0]
+
+  friendshipKinds: (u) ->
+    return map(filter( 
+      this.network,
+      (e) -> e[1].equals(u)
+    ), (e) -> e[0])
 
 record class Chunk
   isText:    () -> false
@@ -171,56 +177,84 @@ policy User,
   _precondition: (user) -> not user.equals(this.client?.user)
 
   read:
-    "password": -> return this.deny("can't read User's private data")
-    
-  update:
-    "! wall": (user, val) -> return this.deny("can't edit other people's data")
+    "password":             -> return this.deny("can't read User's private data")
+    "email, status": (user) -> if !user.hasConnection(this.client?.user) \
+                               then return this.allow("") else return this.allow()
+
+  update: "*":  -> return this.deny("can't edit other people's data")
+  delete:       -> return this.deny("can't delete other users")
+  push: "wall": -> return this.allow()
 
 policy Post,
   # post in question has author different from the logged in user
   _precondition: (post) -> not post.author.equals(this.client?.user)
-
-  delete: (post) -> return this.deny("cannot delete someone else's post")
+  update: "*": -> return this.deny("cannot edit someone else's post")
+  delete:   () -> return this.deny("cannot delete someone else's post")
 
 
 # ==============================================================================
-# Ivan's policies
+# Alice's policies
 # ==============================================================================
 policy User,
-  # user object in question is "Ivan" and is different from the logged in user
-  _precondition: (user) -> (not user.equals(this.client?.user)) and user.email == "ivan@mit.edu"
-
-  # hide friendship kinds
+  _precondition: (user) -> user.email == "alice@mit.edu" and
+                           user.friendshipKinds(this.client?.user).contains("boss")
+    
   read:
-    "network": (user) -> return this.allow(user.network.groupByRange().map((e) -> ["", e.key]))
+    "status":   -> return this.allow("working hard")
+    "location": -> return this.allow("Stata Center")
+    "network":  -> return this.allow([["boss", this.client.user],
+                                      ["best_friends", this.client.user]])    
 
-
-# ==============================================================================
-# Eunsuk's policies
-# ==============================================================================
 policy Post,
   find: (posts) ->
-    self = this
-    hidePost = (post) ->
-      post.author?.email == "eskang@mit.edu" and
-      post.text.search("#fucker") != -1 and
-      post.author.friendshipKinds(self.client.user).contains("boss")
-    return this.allow(filter posts, (p) -> !hidePost(p))
+    actingUser = this.client?.user
+    alice = User.findOne(email: "alice@mit.edu")
+    return this.allow() if !alice.friendshipKinds(actingUser).contains("boss")
+    shouldHide = (post) ->
+      (post.author.equals(alice) or alice.wall.contains(post)) and
+      not post.author.equals(actingUser) and
+      post.text.search("#fun") != -1
+    return this.allow(filter posts, (p) -> !shouldHide(p))
 
-# ==============================================================================
-# Aleks's policies
-# ==============================================================================
-policy User,
-  # user object in question is "Aleks" and is different from the logged in user
-  _precondition: (user) -> (not user.equals(this.client?.user)) and user.email == "aleks@mit.edu"
 
-  # don't let people see my network
-  read:
-    "network": -> return this.allow([])
+# # ==============================================================================
+# # Ivan's policies
+# # ==============================================================================
+# policy User,
+#   # user object in question is "Ivan" and is different from the logged in user
+#   _precondition: (user) -> (not user.equals(this.client?.user)) and user.email == "ivan@mit.edu"
+
+#   # hide friendship kinds
+#   read:
+#     "network": (user) -> return this.allow(user.network.groupByRange().map((e) -> ["", e.key]))
+
+
+# # ==============================================================================
+# # Eunsuk's policies
+# # ==============================================================================
+# policy Post,
+#   find: (posts) ->
+#     self = this
+#     hidePost = (post) ->
+#       post.author?.email == "eskang@mit.edu" and
+#       post.text.search("#fucker") != -1 and
+#       post.author.friendshipKinds(self.client.user).contains("boss")
+#     return this.allow(filter posts, (p) -> !hidePost(p))
+
+# # ==============================================================================
+# # Aleks's policies
+# # ==============================================================================
+# policy User,
+#   # user object in question is "Aleks" and is different from the logged in user
+#   _precondition: (user) -> (not user.equals(this.client?.user)) and user.email == "aleks@mit.edu"
+
+#   # don't let people see my network
+#   read:
+#     "network": -> return this.allow([])
     
-  # don't allow people to post on my wall
-  update:
-    "wall": (user) -> return this.deny("DON'T POST ON ALEKS' WALL!!!")
+#   # don't allow people to post on my wall
+#   update:
+#     "wall": (user) -> return this.deny("DON'T POST ON ALEKS' WALL!!!")
 
 
 

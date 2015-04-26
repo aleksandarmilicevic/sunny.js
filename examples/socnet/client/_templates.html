@@ -53,7 +53,7 @@
 <!--   user: User                           -->
 <!-- ====================================== -->
 <template name="network_by_users">
-  <ul>
+  <ul class="list-inline">
   {{#each user.network.groupByRange}}
   <li style="margin: 1px">
     <div class="inlineb top">{{> user_avatar user=this.key}}</div>
@@ -80,7 +80,7 @@
   <div class="row user_profile_top">
     {{> user_avatar user=user}}
     <div class="user_info">
-      <span id="profile_name" {{editableField obj=user fld="name"}}>{{user.name}}</span><br>
+      <span id="profile_name" {{editableField obj=user fld="name"}}>{{salute user}}</span><br>
       <span {{editableField obj=user fld="email"}}><i class="icon-envelope"></i>&nbsp;{{user.email}}</span><br>
       <span {{editableField obj=user fld="location"}}><i class="icon-globe"></i>&nbsp;{{user.location}}</span>
     </div>
@@ -90,14 +90,14 @@
     </div>
   </div>
   <div class="row user_profile_bottom">
-    <div class="span4 user_network">
-      <div class="network_label">Network ({{user.network.length}})</div>
+    <div class="user_network">
+      <div class="network_label">Network ({{user.network.groupByRange.length}})</div>
       {{> network_by_users user=user}}
     </div>
-    <div class="span8 user_wall">
+    <div class="user_wall">
       <div class="wall_label">Wall</div>
       <div {{PostEvent to=user}}>
-        <textarea class="form-control" rows="3" {{PostEvent_text}}></textarea>
+        <textarea class="form-control" rows="2" {{PostEvent_text}}></textarea>
         <button class="btn btn-primary" {{sunny_trigger}}>Post</button>
       </div>
       <div class="posts">

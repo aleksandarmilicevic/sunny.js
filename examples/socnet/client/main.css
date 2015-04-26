@@ -345,7 +345,7 @@ div.name {
 }
 
 .user-buttons .user-name-status {
-    width: auto;
+    width: auto !important;
     vertical-align: middle;
 }
 
@@ -400,7 +400,7 @@ div.name {
 }
 
 .user_profile {
-    width: 70%;
+    width: 590px;
     border-radius: 10px;
     padding: 20px;
     border: 1px solid black;
@@ -469,4 +469,22 @@ img.editable-click {
 .delete_post {
     float: right;
     cursor: pointer;
+}
+
+#main-container {
+    margin-left: 20%;
+    margin-right: 20%;
+}
+
+.user_wall {
+    display: block;
+}
+
+.user_wall textarea {
+    width: 85%;
+    display: inline-block;
+}
+
+#app-title {
+  margin-left: 70px;
 }
