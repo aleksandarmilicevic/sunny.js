@@ -144,7 +144,8 @@ Sunny.Conf = do ->
   registerGlobalNames: true
   serverRecordPersistence: "reuse" # valid values: 'reuse', 'create', 'replace'
   deepPolicyChecking: true
-  atomicity: "rpc" # valid values: 'global', 'rpc', 'none'
+  atomicityServerConf: "hard"
+  atomicity: "none" # valid values: 'global', 'rpc', 'none'
 
 # ====================================================================================
 #   standard prototype extensions
@@ -336,9 +337,11 @@ Sunny.Utils = do ->
       if @monitorCnt == 0
         lock_debug "[[ OUT of #{this}]]"
         @acquired = false
-        fbToResume = @blockedFibers.shift()
-        lock_debug "[[ resuming ]]" if fbToResume
-        fbToResume.run() if fbToResume
+        bf = @blockedFibers
+        @blockedFibers = []
+        for fb in bf
+          lock_debug "[[ resuming ]]"
+          fb.run()
       else
         lock_debug "[[ DEC #{this}: #{@monitorCnt} ]]"
 
@@ -404,12 +407,15 @@ Sunny.Utils = do ->
     () ->
       self = this
       args = arguments
-      lock.wait()
-      try 
-        fn.apply(self, args)
-      finally
-        lock.release()
+      Sunny.Utils.runInCriticalSection lock, () -> fn.apply(self, args)
 
+  runInCriticalSection: (lock, fn) ->
+    lock.wait()
+    try 
+      fn()
+    finally
+      lock.release()
+    
 assert = Sunny.Utils.assert
 
 # ====================================================================================
@@ -779,7 +785,7 @@ Sunny.Types = do ->
       return this.klasses[this.klasses.length - 1].getConstrFn()
 
   __exports__ : ["Int", "Bool", "Real", "DateTime", "Text", "Klass", "Type", "Obj", "Val", "Enum", "enums",
-                 "one", "set", "compose", "owns"]
+                 "one", "set", "seq", "compose", "owns"]
 
   Klass     : Klass
   Type      : Type
@@ -816,6 +822,7 @@ Sunny.Types = do ->
                      else
                        return null
   set       : (t) -> return setTypeProperty(t, "mult", "set")
+  seq       : (t) -> return setTypeProperty(t, "mult", "seq")
   one       : (t) -> return setTypeProperty(t, "mult", "one")
   compose   : (t) -> return setTypeProperty(t, "refKind", "composition")
   owns      : (t) -> return Sunny.Types.compose(t)
@@ -1424,12 +1431,16 @@ Sunny.Model = do ->
     _isSubSig: (sig) -> Sunny.Types.isSubklass(sig, @sig)
 
     _mkContext:   (op, extraHash) ->
+      allowFn = (val) -> new PolicyOutcome(true, val)
+      denyFn = (reason) -> new PolicyOutcome(false, undefined, reason)
       ans =
-        allow  : (newVal) -> new PolicyOutcome(true, newVal)
-        deny   : (reason) -> new PolicyOutcome(false, undefined, reason)
-        client : Sunny.myClient()
-        server : Sunny.myServer()
-        op     : op
+        allow      : allowFn
+        deny       : denyFn
+        restrictIf : (boolCond, newVal) -> if boolCond then allowFn(newVal) else allowFn()
+        denyIf     : (boolCond, reason) -> if boolCond then denyFn(reason) else allowFn()
+        client     : Sunny.myClient()
+        server     : Sunny.myServer()
+        op         : op
       ans[p] = pv for p, pv of extraHash
       ans
 
@@ -1749,7 +1760,9 @@ Sunny.Dsl = do ->
     name: Text
     avatar: Text
 
-    avatarLink: () -> this.avatar || "https://www.gnu.org/graphics/heckert_gnu.small.png"
+    # http://upload.wikimedia.org/wikipedia/commons/a/af/Tux.png
+    # http://upload.wikimedia.org/wikipedia/commons/thumb/8/83/The_GNU_logo.png/491px-The_GNU_logo.png
+    avatarLink: () -> this.avatar || "http://upload.wikimedia.org/wikipedia/commons/thumb/8/83/The_GNU_logo.png/491px-The_GNU_logo.png"
     
     __static__: {
       findOrCreate: (mUser) ->
@@ -2147,8 +2160,7 @@ Sunny.Queue = do ->
       _queue.push(inv)
       try
         # tx.start()
-        onClientBehalf connId, () ->
-          opFn.apply(self, args)
+        onClientBehalf connId, () -> opFn.apply(self, args)
         # tx.commit()
       catch err
         _rootInvocation().error = err
@@ -2183,9 +2195,17 @@ Sunny.Queue = do ->
     inv.addComp(comp)
 
   wrapAsInvocation: (op, opFn) ->
-    fn = _wrapAsInvocationNonBlocking(op, opFn)    
-    fn = Sunny.Utils.wrapInCriticalSection(_lock, fn) if Meteor.isServer && Sunny.Conf.eventAtomicity=='global'
-    fn
+    fn = _wrapAsInvocationNonBlocking(op, opFn)
+    if Sunny.Conf.atomicityServerConf == "hard"
+      fn = Sunny.Utils.wrapInCriticalSection(_lock, fn) if Meteor.isServer && Sunny.Conf.atomicity == "global"
+      return fn
+    else
+      () ->
+        self = this; args = arguments
+        if Meteor.isServer && Sunny.Conf.atomicity == "global"
+          runInCriticalSection _lock, () -> fn.apply(self, args)
+        else
+          fn.apply(self, args)
         
   runAsInvocation: (op, opFn) ->
     Sunny.Queue.wrapAsInvocation(op, opFn).call(this)
@@ -2235,7 +2255,7 @@ if Meteor.isServer
     fn = Sunny.Queue.wrapAsInvocation op, () ->
       sdebug "applying Meteor.method '#{op}'"
       opFn.apply(this, arguments)
-    fn = Sunny.Utils.wrapInCriticalSection(_rpcLock, fn) if Sunny.Conf.atomicity=="rpc"
+    # fn = Sunny.Utils.wrapInCriticalSection(_rpcLock, fn) if Sunny.Conf.atomicity=="rpc"
     fn
     
   mthds[op] = _wrapForRPC op, opFn for op, opFn of Sunny._CRUD
@@ -2371,7 +2391,6 @@ Meteor.startup () ->
 # ====================================================================================
 #   Initializations
 # ====================================================================================
-
 Sunny._currClient    = new Sunny.Utils.FiberLocalVar("Sunny.currClient")
 Sunny._currPrincipal = new Sunny.Utils.FiberLocalVar("Sunny.currPrincipal")
 Sunny._currConnId    = new Sunny.Utils.FiberLocalVar("Sunny.currConnId")
