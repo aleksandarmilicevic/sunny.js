@@ -1,0 +1,113 @@
+# This is a set of demonstration scripts
+#grinder.script=hello.clj
+#grinder.script=hello_test.clj
+#grinder.script=http.clj
+#grinder.script=http_instrumented.clj
+#grinder.script=http_stats.clj
+#grinder.script=http_binding.clj
+#grinder.script=http_shared.clj
+
+grinder.script = meteor.clj
+
+grinder.targetUrl = http://localhost:3000/
+
+# Fetch initial html and referenced assets?  Default = false
+#grinder.downloadPayload = true
+
+# If users is supplied, each run will login via a randomly-
+# selected email. The supplied value should be a JSON array
+# of key-value pairs where the key is an email address and
+# the value is a password.
+#
+# ex.  
+#
+#   grinder.users = [ {"test@example.com":"crystal"}, {"test2@example.com":"crystal"} ]
+#
+grinder.users = [ {"pera@mit.edu":"123456"} ]
+
+# For OAUTH, you'll need to use resume tokens to perform logins.
+# It can be a pain to obtain the tokens, easier to use accounts-
+# password if possible.
+# If resumeTokens is supplied, each run will login via a randomly-
+# selected token. The supplied value should be a string; multiple 
+# tokens are supported using comma separators.
+#
+# ex.  
+#
+#   grinder.resumeTokens = "2mq3jD4Zb4XeLvwRC,cSB6DnERrk6ZFss58,5r5DoQNFNtwasCmHB"
+#
+#
+# Tokens can be obtained via:
+#
+#   a) database - Login once using a browser so the resume token
+#                 is stored in the user's record.  The user's
+#                 'services.resume.loginTokens' array contains
+#                 the appropriate value in the latest entry's
+#                 'token' field.
+#      ex. 
+#           db.users.find({"emails.address":"test@example.com"}, 
+#                         {"services.resume.loginTokens":1})
+#           => [{"token" : "5r5DoQNFNtwasCmHB",
+#                 "when" : 1382630975632}]
+# 
+#   b) browser - Login once using a browser, then open your 
+#                browser's developer tools (firebug, chrome
+#                dev tools, etc), then refresh.
+#                The Network tab will have a DDP call to the
+#                'login' method with the resume token as a 
+#                parameter.
+#      ex.
+#           ["{\"msg\":\"method\",\"method\":\"login\",
+#              \"params\":[{\"resume\":\"5r5DoQNFNtwasCmHB\"}],
+#              \"id\":\"1\"}"]
+#
+#grinder.resumeTokens = "5r5DoQNFNtwasCmHB,2mq3jD4Zb4XeLvwRC,cSB6DnERrk6ZFss58"
+
+# Subscriptions and calls expect a json array.  Array elements
+# can be either:
+#   * string - interpreted as name with no args
+#   * object - keys interpreted as name, value must be an array
+#              of arguments which will be passed to server
+#
+# These keywords will be replaced automatically:
+#   CLIENTID - id unique to executing thread
+#   RUNID - number corresponding to current test run
+#
+grinder.subscriptions = []
+grinder.calls = [{"createNewRoom":["pppera"]}]
+
+# Agent config settings
+#
+# Number of simulated clients = agents * processes * threads
+#
+# Each thread (client) will: 
+#   1. Request initial payload
+#   2. Request css & scripts found in initial response
+#   3. Initiate DDP connection
+#   4. Login via random resumeToken (if supplied)
+#   5. Subscribe to subscriptions specified above
+#   6. Perform method calls specified above 'runs' number of times
+#
+# See http://grinder.sourceforge.net/g3/properties.html
+# for more options such as, initialSleepTime or processIncrement
+#
+grinder.processes = 1
+grinder.threads = 1
+grinder.runs = 2
+
+# Number of milliseconds to wait between method calls
+#grinder.callDelayMs = 200
+
+# Maximum amount of time in ms thread will wait before starting.
+# Actual sleep time will be a random value between 0 and specified
+# value
+#grinder.initialSleepTime = 2000
+
+
+# Set debug to true to see a bit more detail
+# Collection updates from server will always be logged
+grinder.debug = false
+
+# for some reason, the log directory required restating
+grinder.logDirectory = log
+

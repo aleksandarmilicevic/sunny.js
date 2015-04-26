@@ -11,7 +11,6 @@ record class Party
   finalized: Bool
   hosts: set SunnyUser
   guests: set SunnyUser
-
         
 # ============================ MACHINES ======================================
 
@@ -20,7 +19,6 @@ client class Client
   selectedEvent: Party
 
 # ============================ EVENTS ======================================
-
 
 event class ClientEvent
   from:
@@ -153,8 +151,8 @@ policy Party,
     !party.hosts.contains(this.client?.user) && !party.finalized
      
   read:
-    "hosts":    -> return this.allow([])
-    "guests":   -> return this.allow([])
+    "hosts":  () -> return this.allow([])
+    "guests": () -> return this.allow([])
 
 policy Party,
   # client user is not a host
@@ -168,10 +166,8 @@ policy Party,
        else
          return this.deny("cannot remove a guest other than you when you are not a host")
     
-  update:
-    "*": -> return this.deny("cannot update event which you don't host")
-
-  delete: -> return this.deny("cannot delete event which you don't host")
+  update: "*": -> return this.deny("cannot update event which you don't host")
+  delete:      -> return this.deny("cannot delete event which you don't host")
 
 # ------------------------------
 # stdlib

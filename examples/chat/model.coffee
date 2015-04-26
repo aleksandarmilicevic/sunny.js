@@ -4,6 +4,7 @@ simport Sunny.Types
 
 # Sunny.Conf.serverRecordPersistence = 'replace'
 Sunny.Conf.deepPolicyChecking = false
+Sunny.Conf.atomicity = 'none'
 
 # ============================ RECORDS ======================================
 
@@ -126,7 +127,7 @@ event class LeaveRoom extends ClientEvent
 policy User,
   _precondition: (user) -> not user.equals(this.client?.user)
 
-  read:   "! name, status": -> return this.deny("can't read User's private data")
+  read:   "! name, avatar, status": -> return this.deny("can't read User's private data")
   update: "*":  (user, val) -> return this.deny("can't edit other people's data")
   delete:       (user)      -> return this.deny("can't delete other user")
   find:         (users) ->
@@ -167,6 +168,8 @@ event class Destroy extends ClientEvent
     this.obj.destroy()
 
 
+# =======================================
+
 Sunny.methods
   createNewRoom: (name) ->
     sdebug "createNewRoom calleD"
@@ -174,4 +177,18 @@ Sunny.methods
     ev = Sunny.CreateRoom.new(roomName: name)
     sdebug "event's client: #{ev.client}"
     ev.trigger()
- 
+
+  sendMessageToRoom: (name, text) ->
+    sdebug "**** BBBBBBBB"
+    sdebug "**** name: #{name}, text: #{text}"
+    sdebug "**** my client: #{Sunny.myClient().user}"
+    myRoom = App.ChatRoom.findOne({name: name})
+    sdebug "**** myRoom: #{myRoom}"
+    #ev = App.JoinRoom.new(room: myRoom)
+    #ev.trigger()
+    #sdebug "CCCCC"
+    ev = App.SendMsg.new(room: myRoom, msgText: text)
+    ev.trigger()
+    sdebug "DDDDDD"
+    #msg = {text: text, sender: null, time: new Date()}
+    #App.Msg.__meta__.__repr__.insert(msg)
