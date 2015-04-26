@@ -1,0 +1,68 @@
+<template name="_room">
+
+<div class="ChatRoom panel panel-primary">
+   <div class="panel-heading">
+      <div class="panel-title">
+        <a {{editableField obj=this.room fld="name"}}>{{room.title}}</a>
+        <div class="pull-right">
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-minus"
+                {{sunny_trigger event="RemoveRoomFromSelected" room=this.room}}>
+          </span>
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+                {{sunny_trigger event="Destroy" obj=this.room}}>
+          </span>
+        </div>
+      </div>
+   </div>
+
+   <div class="row">
+     <div class="col-md-4 frame-right">
+       <div class="join-leave">
+       {{#if room.members.contains Client.user}}
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-minus"
+                {{sunny_trigger event="LeaveRoom" room=this.room}}>
+          </span>
+       {{else}}
+          <span class="btn btn-default btn-sm my-icon-btn glyphicon glyphicon-plus"
+                {{JoinRoom room=this.room}}
+                {{sunny_trigger}}>
+          </span>
+       {{/if}}
+       </div>
+       <div class="sec-title">members</div>
+       {{#each room.members}}
+         <div class="User status">{{this.name}}</div>
+       {{/each}}
+     </div>
+
+     <div class="col-md-8">
+       <div class="sec-title">messages</div>
+       <ul class="list-group">
+         {{#each room.messages}}
+           <li class="Msg list-group-item">
+             <b><span class="sender">{{salute this.sender}}</span></b>: 
+             <span class="msg" {{editableField obj=this fld="text"}}>{{text}}</span>
+             <span class="pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove"
+                {{sunny_trigger event="Destroy" obj=this}}>
+             </span>
+           </li>
+         {{/each}}
+       </ul>
+     </div>
+   </div>
+
+   <div {{SendMsg room=this.room}} 
+        class="SendMsgForm form-inline" >
+     <div class="form-group">
+       <input type="text" name="text" 
+              placeholder="Enter message"
+              {{sunny_trigger}}
+              {{SendMsg_msgText}}/>
+     </div>
+     <button class="btn btn-default SendMsg" 
+             {{sunny_trigger}}>
+       Send
+     </button>
+   </div>
+</div>
+</template>

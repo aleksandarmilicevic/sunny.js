@@ -1,0 +1,274 @@
+.container {
+    width: 650px !important;
+}
+
+.frame {
+  border: 1px solid #dddddd;
+}
+
+.frame-right {
+  border-right: 1px solid #dddddd;
+}
+
+.sec-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  margin-top: 5px;
+}
+
+.list-group-item.me {
+  background-color: #bce8f1;
+  z-index: 2;
+  border-color: #9ac6c9;
+}
+
+.navbar-inverse .User {
+    margin-top: 10px;
+    color: white;
+}
+
+.title-bar a {
+    padding: 5px;
+    color: #f9f381;
+    cursor: pointer;
+}
+
+.title-bar a:hover {
+    color: yellow;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.attach-left {
+    width: 180px;
+    position: relative;
+    left: -195px;
+    top: 4px;
+}
+
+a#brand {
+    font-size: 14pt;
+}
+
+#chatroom-container {
+}
+
+.empty-col {
+    width: 100%;
+    text-align: center;
+}
+
+.user-name-status {
+    display: inline-block;
+    vertical-align: middle;
+    width: 90px;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    margin: 0px; 
+    padding: 0px;
+    margin-right: 5pt;
+    margin-left: -5pt;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.avatar img {
+    height: 48px;
+    margin-left: auto;
+    margin-right: auto; 
+    display: block;
+}
+
+.online-users .list-group-item {
+    margin: 0px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+.online-users h4 {
+    margin: 0px;
+}
+
+.User.status {
+  padding-left: 15px;
+}
+
+.ChatRoom {
+    border: 1px solid;
+    margin: 5px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 5px;
+    display: block;
+    width: 550px;
+    vertical-align: top;
+}
+
+.ChatRoom .panel-heading {
+    padding: 3px;
+}
+
+.ChatRoom .panel-title {
+    padding-left: 5px;
+}
+
+.ChatRoom .panel-title a {
+    border-bottom-color: white;
+}
+
+.ChatRoom .panel-title a:hover {
+    border-bottom-color: white;
+    color: #bce8f1;
+}
+
+.Msg {
+  padding-top: 3px !important;
+  padding-bottom: 3px !important;
+}
+
+.SendMsgForm .form-group {
+   width: 88%;
+}
+
+button.Event {
+    margin: 0px;
+    padding: 3px;
+}
+
+button.Event span.Event {
+    padding: 0px;
+    margin: 2px;
+    margin-top: -2px;
+}
+
+
+div#login-div {
+   width: 300px;
+   margin-left: auto;
+   margin-right: auto;
+}
+
+form#send-msg-form {
+  margin-top: 5px;
+}
+
+div.event {
+   border: 1px solid black;
+   width: 300px;
+   margin: 5px;
+   padding: 5px;
+   float: left;
+}
+
+div.name {
+    font-weight: bold;
+    text-align: center;
+    background-color: #CCCCCC;
+}
+
+.show .label {
+    display: inline-block;
+    color: auto;
+}
+
+.show .value {
+    display: inline-block;
+}
+
+.edit .label {
+    display: inline-block;
+    color: auto;
+}
+
+.edit .value {
+    display: inline-block;
+}
+
+.record .show-field .label {
+    display: inline-block;
+    font-weight: bold;
+    overflow: hidden;
+    padding: 2px 5px 2px 5px;
+    color: auto;
+}
+
+.record .show-field .value {
+    display: inline-block;
+    overflow: hidden;
+    padding: 2px 5px 2px 5px;
+}
+
+.posts {
+    /* border: 1px solid; */
+    padding: 5px;
+    margin: 5px;
+}
+
+.welcome {
+    font-weight: bold;
+    margin: 2px 5px 2px 5px;
+}
+
+.SendMsgForm input[type="text"] {
+    width: 100%;
+    height: 30px;
+}
+ 
+.editable-click {
+    cursor: pointer
+}
+
+.user-buttons {
+    text-align: right;
+    vertical-align: middle;
+}
+
+.user-buttons .User, .user-buttons .User.me {
+    display: inline-block;  
+    margin: 0px;
+    padding: 0px;
+    background-color: inherit;
+    border: 0px;
+    text-align: left;
+}
+
+.user-buttons .user-name-status {
+    width: auto;
+    vertical-align: middle;
+}
+
+.user-buttons h4 {
+    margin: 0px;
+}
+
+.user-buttons #login-buttons a {
+    color: #f9f381;
+}
+
+.accounts-dialog {
+    background-color: rgb(34, 34, 34);
+}
+
+.my-icon-btn {
+    padding: 1px 2px 1px 2px !important;
+    margin-top: -3px !important;
+}
+
+.join-leave {
+    float: right;
+    margin: 5px 2px 5px 2px;
+}
+
+.room-title {
+    padding-left: 10px;
+}
+
+#online-rooms {
+    border: 1px solid gray;
+    border-radius: 5px;
+    padding: 5px;
+}
