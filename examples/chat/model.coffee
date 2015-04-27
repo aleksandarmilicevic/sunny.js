@@ -3,7 +3,7 @@ simport Sunny.Fun
 simport Sunny.Types
 
 # Sunny.Conf.serverRecordPersistence = 'replace'
-Sunny.Conf.deepPolicyChecking = false
+Sunny.Conf.deepPolicyChecking = true
 Sunny.Conf.atomicity = 'none'
 
 # ============================ RECORDS ======================================
@@ -12,6 +12,7 @@ user class User
   status: Text
 
   statusText: () -> this.status || "<statusless>"
+  avatarLink: () -> this.avatar || "/images/user.png"
 
 record class Msg
   text: Text
@@ -94,6 +95,7 @@ event class CreateRoom extends ClientEvent
     room = ChatRoom.create(name: this.roomName)
     room.members.push this.client.user
     this.server.rooms.push room
+    this.client.selectedRooms.push room
     return room
 
 event class JoinRoom extends ClientEvent
@@ -127,12 +129,22 @@ event class LeaveRoom extends ClientEvent
 policy User,
   _precondition: (user) -> not user.equals(this.client?.user)
 
-  read:   "! name, avatar, status": -> return this.deny("can't read User's private data")
+  read:
+    "! name, avatar, status": -> return this.deny("can't read User's private data")
+    "avatar": (usr) ->
+      clntUser = this.client?.user
+      return this.allow() if usr.equals(clntUser)
+      if (this.server.rooms.some (room) -> room.members.containsAll([usr, clntUser]))
+        return this.allow()
+      else
+        return this.deny()
+            
   update: "*":  (user, val) -> return this.deny("can't edit other people's data")
   delete:       (user)      -> return this.deny("can't delete other user")
   find:         (users) ->
-    client = this.client
-    return this.allow(filter users, (u) -> u.equals(client.user) || u.status != "busy")
+    self = this
+    clntUser = this.client?.user
+    return this.allow(filter users, (u) -> u.equals(clntUser) || u.status != "busy")
   
 policy Client,
   _precondition: (clnt) -> clnt.user && !clnt.user.equals(this.client?.user)
