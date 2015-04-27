@@ -1417,7 +1417,7 @@ Sunny.Model = do ->
       return true unless this instanceof ObjPolicy
       not @precondition or @precondition.apply(this._mkContext(op), op.args())
 
-    applies: (op) ->
+    applies: (op) -> 
       this.checkOpName(op) and
       this.checkSig(op) and
       this.checkObj(op) and
@@ -1440,6 +1440,7 @@ Sunny.Model = do ->
         denyIf     : (boolCond, reason) -> if boolCond then denyFn(reason) else allowFn()
         client     : Sunny.myClient()
         server     : Sunny.myServer()
+        priv       : (fn) -> onServerBehalf fn
         op         : op
       ans[p] = pv for p, pv of extraHash
       ans
