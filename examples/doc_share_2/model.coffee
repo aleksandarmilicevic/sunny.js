@@ -27,6 +27,11 @@ record class Photo
     else
       return this.title
 
+record class PhotoWithMetadata extends Photo
+  gpsLocation: Text
+  mime: Text
+  imageSize: Int 
+
 record class Album
   name: Text
   owner: User
