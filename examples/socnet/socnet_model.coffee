@@ -199,11 +199,10 @@ policy User,
   _precondition: (user) -> user.email == "alice@mit.edu" and
                            user.friendshipKinds(this.client?.user).contains("boss")
     
-  read:
-    "status":   -> return this.allow("working hard")
-    "location": -> return this.allow("Stata Center")
-    "network":  -> return this.allow([["boss", this.client.user],
-                                      ["best_friends", this.client.user]])    
+  read: "status":   -> return this.allow("working hard")
+        "location": -> return this.allow("Stata Center")
+        "network":  -> return this.allow([["boss", this.client.user],
+                                          ["best_friends", this.client.user]])    
 
 policy Post,
   find: (posts) ->
