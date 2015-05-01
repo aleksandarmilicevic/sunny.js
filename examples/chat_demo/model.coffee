@@ -9,9 +9,9 @@ Sunny.Conf.atomicity = 'none'
 # ============================ RECORDS ======================================
 
 user class User
-  status: Text
+  # status: Text
+  # statusText: () -> this.status || "<statusless>"
 
-  statusText: () -> this.status || "<statusless>"
   avatarLink: () -> this.avatar || "/images/user.png"
 
 record class Msg
@@ -126,45 +126,100 @@ event class LeaveRoom extends ClientEvent
     
 # ============================ POLICIES ======================================
 
-policy User,
-  _precondition: (user) -> not user.equals(this.client?.user)
+# # ----------------------------------------------------------------------------
+# # -- Hide private info, and disallow unauthorized edits
+# # ----------------------------------------------------------------------------
+# policy User,
+#   _precondition: (usr) -> not usr.equals(this.client?.user)
 
-  read:
-    "! name, avatar, status": -> return this.deny("can't read User's private data")
-    "avatar": (usr) ->
-      clntUser = this.client?.user
-      return this.allow() if usr.equals(clntUser)
-      if (this.server.rooms.some (room) -> room.members.containsAll([usr, clntUser]))
-        return this.allow()
-      else
-        return this.deny()
-            
-  update: "*":  (user, val) -> return this.deny("can't edit other people's data")
-  delete:       (user)      -> return this.deny("can't delete other user")
-  find:         (users) ->
-    self = this
-    clntUser = this.client?.user
-    return this.allow(filter users, (u) -> u.equals(clntUser) || u.status != "busy")
-  
+#   read:   "! name, avatar, status": -> return this.deny("can't read User's private data")
+#   update: "*":  (user, val)         -> return this.deny("can't edit other people's data")
+#   delete:       (user)              -> return this.deny("can't delete other user")
+
+
+# # ----------------------------------------------------------------------------
+# # -- Hide avatars and "busy" users
+# # ----------------------------------------------------------------------------
+# policy User,
+#   # hide avatar unless this User record and the acting user share a chat room
+#   read:
+#     "avatar": (usr) ->
+#       clntUser = this.client?.user
+#       return this.allow() if usr.equals(clntUser)
+#       if (this.server.rooms.some (room) -> room.members.containsAll([usr, clntUser]))
+#         return this.allow()
+#       else
+#         return this.deny()
+
+#   # hide entire User records if their status is 'busy'
+#   find:         (users) ->
+#     self = this
+#     clntUser = this.client?.user
+#     return this.allow(filter users, (u) -> u.equals(clntUser) || u.status != "busy")
+
+# # ----------------------------------------------------------------------------
+# # -- Hide messages containing "#private" from non-members
+# # ----------------------------------------------------------------------------
+# policy ChatRoom,
+#   read:
+#     messages: (room, msgs) ->
+#       return this.deny() if not this.client?.user
+#       if room.members.contains this.client?.user
+#         return this.allow()
+#       else
+#         return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 policy Client,
   _precondition: (clnt) -> clnt.user && !clnt.user.equals(this.client?.user)
   update:   "*": (clnt) -> return this.deny()
   delete:        (clnt) -> return this.deny()
 
-# show messages starting with "#private" only to members
-policy ChatRoom,
-  read:
-    messages: (room, msgs) ->
-      return this.deny() if not this.client?.user
-      if room.members.contains this.client?.user
-        return this.allow()
-      else
-        return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
-
 policy Msg,
   _precondition: (msg) -> not (msg.sender && msg.sender.equals(this.client?.user))
   update: "*": () -> return this.deny("can't change other's messages")
   delete:      () -> return this.deny("can't delete other's messages")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ------------------------------
 # stdlib
@@ -178,29 +233,3 @@ event class Destroy extends ClientEvent
     
   ensures: () ->
     this.obj.destroy()
-
-
-# =======================================
-
-Sunny.methods
-  createNewRoom: (name) ->
-    sdebug "createNewRoom calleD"
-    sdebug "my client: #{Sunny.myClient()}"    
-    ev = Sunny.CreateRoom.new(roomName: name)
-    sdebug "event's client: #{ev.client}"
-    ev.trigger()
-
-  sendMessageToRoom: (name, text) ->
-    sdebug "**** BBBBBBBB"
-    sdebug "**** name: #{name}, text: #{text}"
-    sdebug "**** my client: #{Sunny.myClient().user}"
-    myRoom = App.ChatRoom.findOne({name: name})
-    sdebug "**** myRoom: #{myRoom}"
-    #ev = App.JoinRoom.new(room: myRoom)
-    #ev.trigger()
-    #sdebug "CCCCC"
-    ev = App.SendMsg.new(room: myRoom, msgText: text)
-    ev.trigger()
-    sdebug "DDDDDD"
-    #msg = {text: text, sender: null, time: new Date()}
-    #App.Msg.__meta__.__repr__.insert(msg)
