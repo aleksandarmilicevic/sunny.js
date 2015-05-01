@@ -2,9 +2,7 @@ simport Sunny.Dsl
 simport Sunny.Fun
 simport Sunny.Types
 
-# Sunny.Conf.serverRecordPersistence = 'replace'
-Sunny.Conf.deepPolicyChecking = true
-Sunny.Conf.atomicity = 'none'
+Sunny.Conf.serverRecordPersistence = 'replace'
 
 # ============================ RECORDS ======================================
 
