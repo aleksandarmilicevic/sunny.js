@@ -79,10 +79,14 @@ if Meteor.isClient
     return if pNameIdx == -1
     pName = evParams[pNameIdx]
     pVal = paramValue
-    if typeof(paramValue) == "string" &&
-         paramValue.indexOf("$<") == 0 && paramValue[paramValue.length - 1] == ">"
-      jsCode = paramValue.substring(2, paramValue.length-1)
-      fn = eval "function f() { return #{jsCode}; }; f"
-      pVal = fn.call($elem)
+    if typeof(paramValue) == "string"
+      if paramValue.indexOf("$<") == 0 && paramValue[paramValue.length - 1] == ">"
+        jsCode = paramValue.substring(2, paramValue.length-1)
+        fn = eval "function f() { return #{jsCode}; }; f"
+        pVal = fn.call($elem)
+      else if Sunny.Types.isSigKls(ev.meta().field("room").type?.domain())
+        sigCls = ev.meta().field("room").type?.domain()
+        pVal = sigCls.new({id: paramValue})
+        
     ev[pName] = pVal
 
