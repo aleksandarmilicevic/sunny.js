@@ -272,3 +272,11 @@ div.name {
     border-radius: 5px;
     padding: 5px;
 }
+
+.glyphicon-remove:before {
+  content: "✖" !important;
+}
+
+.glyphicon-ok:before {
+  content: "✔" !important;
+}
