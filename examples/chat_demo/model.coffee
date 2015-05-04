@@ -155,6 +155,38 @@ event class LeaveRoom extends ClientEvent
 #     clntUser = this.client?.user
 #     return this.allow(filter users, (u) -> u.equals(clntUser) || u.status != "busy")
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # # ----------------------------------------------------------------------------
 # # -- Hide messages containing "#private" from non-members
 # # ----------------------------------------------------------------------------
@@ -167,38 +199,15 @@ event class LeaveRoom extends ClientEvent
 #       else
 #         return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
 
+# policy Client,
+#   _precondition: (clnt) -> clnt.user && !clnt.user.equals(this.client?.user)
+#   update:   "*": (clnt) -> return this.deny()
+#   delete:        (clnt) -> return this.deny()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-policy Client,
-  _precondition: (clnt) -> clnt.user && !clnt.user.equals(this.client?.user)
-  update:   "*": (clnt) -> return this.deny()
-  delete:        (clnt) -> return this.deny()
-
-policy Msg,
-  _precondition: (msg) -> not (msg.sender && msg.sender.equals(this.client?.user))
-  update: "*": () -> return this.deny("can't change other's messages")
-  delete:      () -> return this.deny("can't delete other's messages")
+# policy Msg,
+#   _precondition: (msg) -> not (msg.sender && msg.sender.equals(this.client?.user))
+#   update: "*": () -> return this.deny("can't change other's messages")
+#   delete:      () -> return this.deny("can't delete other's messages")
 
 
 
