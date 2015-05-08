@@ -51,20 +51,9 @@ class ColumnBinRel
     
     if Meteor.isServer
       if Sunny.DataVisualiser.isLoaded
-        console.log("add")
-        console.log(@columnId)
-        console.log(key)
-        # console.log(Cells.findOne(key[0]))
-        console.log(value)
-        console.log("****")
-        console.log(attribute)
-        console.log(modelClass)
         if key.length != 0
           objectId = Sunny.DataVisualiser.cellidObjectidMap[modelClass.cellName][key[0]]
           object = Sunny.Meta.records[modelClass.cellName].findById(objectId)
-          console.log("****found object***")
-          console.log(objectId)
-          console.log(object)
         if attribute.cellName != null
           newObject = Sunny.Meta.records[attribute.cellName].create()
           counter = Sunny.DataVisualiser.modelNextId[attribute.cellName]

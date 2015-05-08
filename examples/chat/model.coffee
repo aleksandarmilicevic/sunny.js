@@ -9,7 +9,7 @@ simport Sunny.Types
 user class User
   status: Text
 
-  statusText: () -> this.status || "<statusless>"
+  statusText: () -> this.status
 
 record class Msg
   text: Text
@@ -22,7 +22,7 @@ record class ChatRoom
   messages: compose set Msg
 
   title: () ->
-    if not this.name || this.name.length == 0
+    if not this.name 
       return "unnamed"
     else
       return this.name
@@ -55,10 +55,7 @@ event class SendMsg extends ClientEvent
 
   requires: () ->
     return "must log in first!" if not this.client?.user
-    return "no room given" unless this.room
-    return "no text given" unless this.msgText
-    return "must join room first" unless this.room.members.contains(this.client.user)
-
+    
   ensures: () ->
     msg = Msg.create(
             sender: this.client.user

@@ -36,7 +36,8 @@ if Meteor.isClient
         $(this).val("")
 
     
-    Router.route "/uiGenerator", -> @render "uiGenerator"
+    Router.route "/uiGeneratorLists", -> @render "uiGeneratorLists"
+    Router.route "/uiGeneratorForms", -> @render "uiGeneratorForms"
     Router.route "/database", -> @render "Spreadsheet"  # @deprecated (should show list of avail sheets)
     Router.route "/database/:sheet", ->
       @render "Spreadsheet", data: {sheet: @params.sheet}

@@ -289,7 +289,6 @@ Meteor.startup () ->
       if /^(.*\.)?ptc$/.test(@id)
         loadSampleData(@model)
       @model.evaluateAll()
-      
   Tablespace.default = tspace = Tablespace.get('ptc')  # mostly for use in the shell
   tspace.run()
 

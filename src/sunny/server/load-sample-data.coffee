@@ -2,11 +2,16 @@
   # Sample schema and data in a more human-friendly hierarchical format.
 
   records = Object.keys(Sunny.Meta.records)
-  type_dic = {Text: "_string", Val: "_string"}
+  type_dic = {Text: "_string", Val: "_string", Int: "_string"}
   testSchema = []
+  subClassSchema = []
   objectAttributeMap ={}
   for record in records
     obj = {type: '_token', cellName: record, children: []}
+    parent = Sunny.Meta.records[record].__meta__.parentSig.name
+    if parent != "Record" and parent != "SunnyUser"
+      obj.type = '_unit'
+      obj.children.push {name: "parent", type: parent }
     fields = Sunny.Meta.records[record].__meta__.allFields()
     for field in fields
       if field.name != "_mUser"
@@ -21,8 +26,14 @@
           fieldObj = {name: field.name, type: field.type.klasses[0].name, children: [] }
         obj.children.push fieldObj
 
-    
-    testSchema.push obj
+    if parent != "Record" and parent != "SunnyUser"
+      for doneObj in testSchema
+        if doneObj.cellName == parent
+          doneObj.children.push obj
+          subClassSchema.push obj
+    else
+      testSchema.push obj
+  console.log(JSON.stringify(testSchema))
   # Shorthands:
 
   # Simple value(s)
@@ -44,8 +55,8 @@
     ##TODO add data from database
   }
 
-
-  for modelType in testSchema
+  combinedSchema = testSchema #.concat subClassSchema
+  for modelType in combinedSchema
     objects = Sunny.Meta.records[modelType.cellName].all()
     Sunny.DataVisualiser.objectidCellidMap[modelType.cellName] = {}
     Sunny.DataVisualiser.cellidObjectidMap[modelType.cellName] = {}
@@ -77,6 +88,7 @@
     Sunny.DataVisualiser.modelNextId[modelType.cellName] = counter
     sampleData[modelType.cellName] = T(instancesDone)
   # Add a super dict representing _unit, though it doesn't get an ID or anything.
+  console.log(sampleData)
   superSchema = {children: testSchema}
 
   # Delete all existing columns!!
