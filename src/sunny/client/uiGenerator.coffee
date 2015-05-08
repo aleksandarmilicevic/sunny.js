@@ -206,6 +206,7 @@
 @list_ready = ->
   createListViewTabs()
   $('#tabs').tab()
+  
 
 @forms_ready = ->
   createFormsTabs()

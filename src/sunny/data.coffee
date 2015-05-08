@@ -57,8 +57,8 @@ class ColumnBinRel
         if attribute.cellName != null
           newObject = Sunny.Meta.records[attribute.cellName].create()
           counter = Sunny.DataVisualiser.modelNextId[attribute.cellName]
-          Sunny.DataVisualiser.objectidCellidMap[attribute.cellName][newObject.id()]= counter
-          Sunny.DataVisualiser.cellidObjectidMap[attribute.cellName][counter] = newObject.id()
+          Sunny.DataVisualiser.objectidCellidMap[attribute.cellName][newObject.id()]= value
+          Sunny.DataVisualiser.cellidObjectidMap[attribute.cellName][value] = newObject.id()
           Sunny.DataVisualiser.modelNextId[attribute.cellName] = counter+1
         else if object[attribute.name] instanceof Array
           newObj = value
