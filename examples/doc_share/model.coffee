@@ -84,6 +84,7 @@ event class AddPhoto extends ClientEvent
     return "must ask to view album first." unless this.album.owner.name is this.client.user.name
 
   ensures: () ->
+    console.log("add photo")
     photo = Photo.create(
             title: this.photoTitle
             link: this.photoLink

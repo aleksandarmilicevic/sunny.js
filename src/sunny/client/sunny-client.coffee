@@ -91,9 +91,9 @@ if Meteor.isClient
         jsCode = paramValue.substring(2, paramValue.length-1)
         fn = eval "function f() { return #{jsCode}; }; f"
         pVal = fn.call($elem)
-      else if Sunny.Types.isSigKls(ev.meta().field("room").type?.domain())
-        sigCls = ev.meta().field("room").type?.domain()
-        pVal = sigCls.new({id: paramValue})
+      else if Sunny.Types.isSigKls(ev.meta().field(pName).type?.domain())
+        sigCls = ev.meta().field(pName).type?.domain()
+        pVal = sigCls.findById(paramValue)
         
     ev[pName] = pVal
 

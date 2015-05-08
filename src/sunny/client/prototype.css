@@ -223,7 +223,7 @@ will always match, just to get higher priority.
   background-color: #b7b7b7;
   border: 1px gray solid;
   padding: 5px;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
 }
 .subObject{
   background-color: #e5e5e5;
