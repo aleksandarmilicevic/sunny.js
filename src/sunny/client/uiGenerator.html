@@ -13,17 +13,6 @@
     <div id="sunnyCodeContainer"></div>
   </div>
 
-  <div style="height:300px; width:350px; margin-bottom:10px; overflow-y:auto;"> 
- {{#each Album}} 
- <div class='listObject' style="width:300px;"><span class='Album-exit pull-right btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove' {{sunny_trigger event='Destroy' obj=this}}> </span> 
- <div class='Album-name' > <div>name :<span {{editableField obj=this fld='name'}}> {{this.name}}</span></div></div> <hr> 
- <div class ='subObject'><div class='Album-owner-email' ><div>owner-email :<span {{editableField obj=this fld='email'}}> {{this.owner.email}}</span></div></div> <hr> 
- <div class='Album-owner-name' ><div>owner-name :<span {{editableField obj=this fld='name'}}> {{this.owner.name}}</span></div></div> <hr> 
- </div><div class ='subObject'>{{#each this.photos}} 
- <div class='Album-photos-title' ><div>photos-title<span {{editableField obj=this fld='title'}}> : {{this.title}}</span></div></div> <hr> 
- {{/each}}</div></div>{{/each}} 
- </div>
-
   <script type="text/javascript">
   list_ready();
   </script>
@@ -46,20 +35,6 @@
     <h4 class="uiGenTitle" > Sunny HTML Code</h4>
     <div id="sunnyCodeContainer"></div>
   </div>
-  <div><h4>AddPhoto</h4> 
- <div {{AddPhoto }} class='AddPhotoForm formView form-inline' onkeypress='return event.keyCode != 13;'> 
- <div class='form-group'> 
-  photoTitle:<input type='text' name='photoTitle' placeholder='Enter Text' {{AddPhoto_photoTitle}}/> 
-  photoLink:<input type='text' name='photoLink' placeholder='Enter Text' {{AddPhoto_photoLink}}/> 
- Select album: <br> <select name='album' {{AddPhoto_album}}> 
- {{#each Album}} 
- <option value='{{this.__props__._id}}'>{{this.name}}</option> 
- {{/each}} 
- </select> 
- <button class='btn btn-default AddPhoto' {{sunny_trigger}}> AddPhoto </button> 
- </div> 
- </div> 
- </div>
 
   <script type="text/javascript">
   forms_ready();

@@ -101,7 +101,7 @@
   listCode = "<div><h4>"+model+" List</h4>"
 
   for obj in objects
-    listCode += '<div class="listObject"><span class="floatR btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove" sunny-event-name="Destroy" sunny-param-obj="$<Sunny.Meta.records["'+model+'"].new({_id: "'+obj.id()+'"})> </span>'
+    listCode += '<div class="listObject"><span class="floatR btn btn-default btn-sm my-icon-btn glyphicon glyphicon-remove" sunny-event-name="Destroy" sunny-param-obj="$<Sunny.Meta.records[\''+model+'\'].new({_id: \''+obj.id()+'\'})>" sunny-trigger="--closest--"> </span>'
     for attr in attributes
       if typeof obj[attr] == "string"
         listCode +="<div> "+attr+": "+"<span sunny-editable-fld='true' sunny-sig='"+model+"' sunny-atom-id='"+obj.id()+"' sunny-fld-name='"+attr+"' class='editable editable-click'>"+obj[attr]+"</span></div>"
@@ -126,6 +126,8 @@
   listCode += "</div>"
   listViewContainer = $(".listView"+model)
   listViewContainer.html(listCode)
+  $(".glyphicon-remove").click ->
+    location.reload()
     
   
   

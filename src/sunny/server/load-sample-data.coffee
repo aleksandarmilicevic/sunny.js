@@ -146,4 +146,5 @@
 
   Views.upsert(view1._id, view1)
   Sunny.DataVisualiser.isLoaded = true
+  console.log "Loaded sample data into tablespace '#{$$.id}'"
   model
