@@ -9,7 +9,6 @@ Sunny.Conf.serverRecordPersistence = 'replace'
 user class User
   # status: Text
   # statusText: () -> this.status || "<statusless>"
-
   avatarLink: () -> this.avatar || "/images/user.png"
 
 record class Msg
@@ -155,38 +154,6 @@ event class LeaveRoom extends ClientEvent
 #     clntUser = this.client?.user
 #     return this.allow(filter users, (u) -> u.equals(clntUser) || u.status != "busy")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # # ----------------------------------------------------------------------------
 # # -- Hide messages containing "#private" from non-members
 # # ----------------------------------------------------------------------------
@@ -199,6 +166,10 @@ event class LeaveRoom extends ClientEvent
 #       else
 #         return this.allow(filter msgs, (m) -> not /\#private\b/.test(m.text))
 
+
+# # ----------------------------------------------------------------------------
+# # -- Control Client, Msg modification/deletion
+# # ----------------------------------------------------------------------------
 # policy Client,
 #   _precondition: (clnt) -> clnt.user && !clnt.user.equals(this.client?.user)
 #   update:   "*": (clnt) -> return this.deny()
