@@ -8,7 +8,8 @@
 {{#if user}}
   <!-- <img src="/images/gnuhead.png" width="45"/> -->
   <!-- <img src="/images/{{this.user.name}}.jpg" width="45"/> -->
-  <img style="border:none" {{editableField obj=user fld="avatar"}} src="{{user.avatarLink}}" width="45" height="45"/>
+  <img style="border:none" {{editableField obj=user fld="avatar"}} 
+       src="{{user.avatarLink}}" width="45" height="45"/>
 {{else}}
   <img src="/images/anonymous-50x50.png" width="45" height="45"/>
 {{/if}}
